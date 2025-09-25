@@ -1,0 +1,15 @@
+[submodule "libs/boost-di"]
+	path = libs/boost-di
+	url = https://github.com/boost-experimental/di.git
+[submodule "libs/boost/spirit"]
+	path = libs/boost/spirit
+	url = https://github.com/boostorg/spirit.git
+[submodule "libs/boost/filesyste"]
+	path = libs/boost/filesyste
+	url = https://github.com/boostorg/filesystem.git
+[submodule "libs/boost/system"]
+	path = libs/boost/system
+	url = https://github.com/boostorg/system.git
+[submodule "libs/qcustomplot"]
+	path = libs/qcustomplot
+	url = https://gitlab.com/DerManu/QCustomPlot.git
