@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/qcustomplot)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include)
-
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost/spirit/include)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
@@ -22,14 +22,14 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
-        qcustomplot.h
-        qcustomplot.cpp
 )
 
 
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(Experiment2025
+
+
+qt_add_executable(Experiment2025
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
@@ -51,9 +51,12 @@ else()
     endif()
 endif()
 
+add_subdirectory(libs/qcustomplot)
+
 target_link_libraries(Experiment2025 PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::PrintSupport
+    qcustomplot
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
