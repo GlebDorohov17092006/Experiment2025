@@ -15,6 +15,7 @@ private:
 public:
     Variable(std::vector<double> measurements, const std::string &name_tables,
              const std::string &name_calculated, const Instrument &instrument);
+    Variable();
     double get_measurement(size_t index) const;
     std::string get_name_tables() const;
     std::string get_name_calculated() const;

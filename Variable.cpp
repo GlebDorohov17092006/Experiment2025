@@ -10,6 +10,10 @@ Variable::Variable(std::vector<double> measurements, const std::string &name_tab
 {
 }
 
+Variable::Variable()
+{
+}
+
 std::string Variable::get_name_tables() const
 {
     return name_tables;
