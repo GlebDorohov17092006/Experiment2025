@@ -8,9 +8,13 @@ class Experiment
 private:
     std::vector<Variable> variables;
     std::vector<Variable> calculated_variables;
+    static Experiment *instance;
+    Experiment(std::vector<Variable> variables, std::vector<Variable> calculated_variables);
 
 public:
-    Experiment(std::vector<Variable> variables, std::vector<Variable> calculated_variables);
+    Experiment(const Experiment &) = delete;
+    Experiment &operator=(const Experiment &) = delete;
+    static Experiment *get_instance(std::vector<Variable> variables = {}, std::vector<Variable> calculated_variables = {});
     std::shared_ptr<Variable> get_calculated_variable(size_t index) const;
     std::shared_ptr<Variable> get_variable(size_t index) const;
     size_t get_variables_count() const;

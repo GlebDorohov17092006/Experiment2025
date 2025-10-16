@@ -1,10 +1,21 @@
 #include "Experiment.h"
 #include <stdexcept>
 
+Experiment *Experiment::instance = nullptr;
+
 Experiment::Experiment(std::vector<Variable> variables, std::vector<Variable> calculated_variables)
     : variables(variables),
       calculated_variables(calculated_variables)
 {
+}
+
+Experiment *Experiment::get_instance(std::vector<Variable> variables, std::vector<Variable> calculated_variables)
+{
+    if (instance == nullptr)
+    {
+        instance = new Experiment(variables, calculated_variables);
+    }
+    return instance;
 }
 
 std::shared_ptr<Variable> Experiment::get_variable(size_t index) const
@@ -18,7 +29,7 @@ std::shared_ptr<Variable> Experiment::get_variable(size_t index) const
 
 std::shared_ptr<Variable> Experiment::get_calculated_variable(size_t index) const
 {
-    if (index >= variables.size())
+    if (index >= calculated_variables.size())
     {
         throw std::out_of_range("The index goes beyond the bounds of the calculated_variables array");
     }
@@ -47,7 +58,7 @@ void Experiment::add_calculated_variable(const Variable &variable)
 
 void Experiment::remove_calculated_variable(size_t index)
 {
-    if (index >= variables.size())
+    if (index >= calculated_variables.size())
     {
         throw std::out_of_range("The index goes beyond the bounds of the calculated_variables array");
     }
@@ -74,7 +85,7 @@ void Experiment::set_variable(size_t index, const Variable &variable)
 
 void Experiment::set_calculated_variable(size_t index, const Variable &variable)
 {
-    if (index >= variables.size())
+    if (index >= calculated_variables.size())
     {
         throw std::out_of_range("The index goes beyond the bounds of the calculated_variables array");
     }
