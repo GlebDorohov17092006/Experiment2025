@@ -7,6 +7,10 @@ Instrument::Instrument(const std::string &name, double error)
 {
 }
 
+Instrument::Instrument()
+{
+}
+
 std::string Instrument::get_name()
 {
     return name;
