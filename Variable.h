@@ -24,5 +24,7 @@ public:
     void set_measurement(size_t index, double value);
     void set_name_tables(const std::string &name);
     void set_name_calculated(const std::string &name_calculated);
+    void set_name_instrument(const std::string &name);
+    void set_error_instrument(double error);
     void add_measurement(double measurement);
 };

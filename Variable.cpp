@@ -66,3 +66,13 @@ void Variable::add_measurement(double measurement)
 {
     measurements.push_back(measurement);
 }
+
+void Variable::set_name_instrument(const std::string &name)
+{
+    instrument.set_name(name);
+}
+
+void Variable::set_error_instrument(double error)
+{
+    instrument.set_error(error);
+}
