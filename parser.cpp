@@ -1,3 +1,6 @@
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include "parser.h"
 
 std::vector<Variable> parser_csv(const std::string& filename)
@@ -29,15 +32,15 @@ std::vector<Variable> parser_csv(const std::string& filename)
             if(num_line == 1)
             {
                 //Добавление переменных в вектор
-                Variable param_table;
-                param_table.set_name_tables(cell_of_table);
+                Variable column_of_table;
+                column_of_table.set_name_tables(cell_of_table);
 
-                variables[num_of_sell] = param_table;
+                variables.push_back(column_of_table);
             } 
             else
             {
                 //Добавление экспериментальных данных
-                variables[num_of_sell].set_measurement(num_of_sell, atof(cell_of_table.c_str()));
+                variables[num_of_sell].add_measurement(atof(cell_of_table.c_str()));
             }
 
             num_of_sell += 1;
