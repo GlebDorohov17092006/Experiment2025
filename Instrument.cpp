@@ -11,12 +11,12 @@ Instrument::Instrument()
 {
 }
 
-std::string Instrument::get_name()
+std::string Instrument::get_name() const
 {
     return name;
 }
 
-double Instrument::get_error()
+double Instrument::get_error() const
 {
     return error;
 }
