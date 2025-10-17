@@ -36,103 +36,173 @@
       <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <widget class="QLineEdit" name="formula"/>
-        </item>
-        <item>
-         <widget class="QTabWidget" name="tabGraphSettings">
-          <property name="currentIndex">
-           <number>2</number>
+         <widget class="QTabWidget" name="tabMain">
+          <property name="font">
+           <font>
+            <bold>true</bold>
+           </font>
           </property>
-          <widget class="QWidget" name="widget">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="currentIndex">
+           <number>3</number>
+          </property>
+          <widget class="QWidget" name="table">
            <attribute name="title">
             <string>Таблица</string>
            </attribute>
-           <layout class="QHBoxLayout" name="horizontalLayout">
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QLineEdit" name="formula"/>
+            </item>
             <item>
              <widget class="QTableWidget" name="tableWidget">
               <property name="rowCount">
-               <number>40</number>
+               <number>0</number>
               </property>
               <property name="columnCount">
-               <number>20</number>
+               <number>0</number>
               </property>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <row/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
-              <column/>
              </widget>
+            </item>
+            <item>
+             <layout class="QGridLayout" name="gridLayout">
+              <item row="1" column="2">
+               <widget class="QPushButton" name="removeColumnButton">
+                <property name="font">
+                 <font>
+                  <bold>false</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Удалить столбец</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="2">
+               <widget class="QPushButton" name="addColumnButton">
+                <property name="font">
+                 <font>
+                  <bold>false</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Добавить столбец</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QPushButton" name="removeRowButton">
+                <property name="font">
+                 <font>
+                  <bold>false</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Удалить строку</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0">
+               <widget class="QPushButton" name="addRowButton">
+                <property name="font">
+                 <font>
+                  <bold>false</bold>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>Добавить строку</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </widget>
-          <widget class="QWidget" name="tab_2">
+          <widget class="QWidget" name="instruments">
            <attribute name="title">
             <string>Приборы</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_5">
-            <item row="0" column="0">
+            <item row="1" column="0">
+             <widget class="QPushButton" name="pushButton">
+              <property name="font">
+               <font>
+                <bold>false</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Добавить</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QPushButton" name="pushButton_2">
+              <property name="font">
+               <font>
+                <bold>false</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string>Удалить</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0" colspan="2">
              <widget class="QTableWidget" name="instrumentsTable">
               <property name="columnCount">
                <number>3</number>
               </property>
-              <column/>
-              <column/>
-              <column/>
+              <attribute name="horizontalHeaderVisible">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="horizontalHeaderCascadingSectionResizes">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="horizontalHeaderHighlightSections">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+               <bool>false</bool>
+              </attribute>
+              <attribute name="horizontalHeaderStretchLastSection">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="verticalHeaderVisible">
+               <bool>false</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>Прибор</string>
+               </property>
+               <property name="font">
+                <font>
+                 <pointsize>9</pointsize>
+                 <bold>true</bold>
+                </font>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Описание</string>
+               </property>
+               <property name="font">
+                <font>
+                 <bold>true</bold>
+                </font>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Погрешность</string>
+               </property>
+               <property name="font">
+                <font>
+                 <bold>true</bold>
+                </font>
+               </property>
+              </column>
              </widget>
             </item>
            </layout>
@@ -141,94 +211,209 @@
            <attribute name="title">
             <string>Настройки графиков</string>
            </attribute>
-           <widget class="QWidget" name="">
-            <property name="geometry">
-             <rect>
-              <x>10</x>
-              <y>10</y>
-              <width>291</width>
-              <height>240</height>
-             </rect>
-            </property>
-            <layout class="QFormLayout" name="formLayout">
-             <item row="0" column="0">
-              <widget class="QLabel" name="label">
-               <property name="text">
-                <string>Цвет:</string>
-               </property>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <item>
+             <widget class="QTabWidget" name="tabPlotSettings">
+              <property name="currentIndex">
+               <number>1</number>
+              </property>
+              <property name="documentMode">
+               <bool>false</bool>
+              </property>
+              <widget class="QWidget" name="tab_2">
+               <attribute name="title">
+                <string>График</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_5">
+                <item>
+                 <widget class="QTableWidget" name="tableWidget_2">
+                  <property name="font">
+                   <font>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="rowCount">
+                   <number>0</number>
+                  </property>
+                  <property name="columnCount">
+                   <number>8</number>
+                  </property>
+                  <attribute name="horizontalHeaderStretchLastSection">
+                   <bool>true</bool>
+                  </attribute>
+                  <column>
+                   <property name="text">
+                    <string>Отрисовка</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Тип линийи</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Ширина</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Тип точки</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Размер точки</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Цвет</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Название Ox</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Название Oy</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
               </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QLineEdit" name="lineEdit"/>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>Толщина линий:</string>
-               </property>
+              <widget class="QWidget" name="tab_3">
+               <attribute name="title">
+                <string>Гистограмма</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_6">
+                <item>
+                 <widget class="QTableWidget" name="tableWidget_5">
+                  <property name="font">
+                   <font>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                  <attribute name="horizontalHeaderStretchLastSection">
+                   <bool>true</bool>
+                  </attribute>
+                  <column>
+                   <property name="text">
+                    <string>Отрисовка</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Интервал</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Цвет</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Название Ox</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Название Oy</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
               </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLineEdit" name="lineEdit_2"/>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>Стиль линий:</string>
-               </property>
+              <widget class="QWidget" name="tab_4">
+               <attribute name="title">
+                <string>Скаттерплот</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_7">
+                <item>
+                 <widget class="QTableWidget" name="tableWidget_4">
+                  <property name="font">
+                   <font>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <attribute name="horizontalHeaderStretchLastSection">
+                   <bool>true</bool>
+                  </attribute>
+                  <column>
+                   <property name="text">
+                    <string>Отрисовка</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Тип точки</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Цвет</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Название Ox</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>Название Oy</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
               </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QLineEdit" name="lineEdit_6"/>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_4">
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tab_5">
+           <attribute name="title">
+            <string>Погрешности</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_8">
+            <item>
+             <widget class="QLineEdit" name="formula_error"/>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tableWidget_3">
+              <column>
                <property name="text">
-                <string>Стиль точек:</string>
+                <string>Абсолютная</string>
                </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QLineEdit" name="lineEdit_5"/>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_5">
+              </column>
+              <column>
                <property name="text">
-                <string>Размер точек:</string>
+                <string>Относительная</string>
                </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QLineEdit" name="lineEdit_4"/>
-             </item>
-             <item row="5" column="1">
-              <widget class="QLineEdit" name="lineEdit_3"/>
-             </item>
-             <item row="6" column="1">
-              <widget class="QLineEdit" name="lineEdit_7"/>
-             </item>
-             <item row="5" column="0">
-              <widget class="QLabel" name="label_6">
-               <property name="text">
-                <string>Подпись OX:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="0">
-              <widget class="QLabel" name="label_7">
-               <property name="text">
-                <string>Подпись OY:</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
+              </column>
+             </widget>
+            </item>
+           </layout>
           </widget>
          </widget>
         </item>
        </layout>
       </widget>
-      <widget class="QTabWidget" name="tabWidget_2">
+      <widget class="QTabWidget" name="tabPlot">
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="currentIndex">
         <number>0</number>
        </property>
@@ -280,9 +465,9 @@
     <property name="title">
      <string>Файл</string>
     </property>
-    <addaction name="action_ODF"/>
-    <addaction name="export_CSV"/>
     <addaction name="import_CSV"/>
+    <addaction name="action_CSV"/>
+    <addaction name="action_3"/>
    </widget>
    <addaction name="Menu"/>
   </widget>
@@ -297,9 +482,14 @@
     <string>Файл</string>
    </property>
   </action>
-  <action name="action_3">
+  <action name="import_CSV">
    <property name="text">
-    <string>Сохранить как</string>
+    <string>Импорт CSV</string>
+   </property>
+  </action>
+  <action name="export_CSV">
+   <property name="text">
+    <string>Экспорт CSV</string>
    </property>
   </action>
   <action name="action_ODF">
@@ -310,19 +500,14 @@
     <string>Экспорт в ODF</string>
    </property>
   </action>
-  <action name="export_CSV">
+  <action name="action_CSV">
    <property name="text">
     <string>Экспорт CSV</string>
    </property>
   </action>
-  <action name="import_CSV">
+  <action name="action_3">
    <property name="text">
-    <string>Импорт CSV</string>
-   </property>
-  </action>
-  <action name="action_4">
-   <property name="text">
-    <string>Выход</string>
+    <string>Создать отчет</string>
    </property>
   </action>
  </widget>
