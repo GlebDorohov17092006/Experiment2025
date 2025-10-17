@@ -1,0 +1,3 @@
+[submodule "libs/qcustomplot"]
+	path = libs/qcustomplot
+	url = https://gitlab.com/DerManu/QCustomPlot.git
