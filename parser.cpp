@@ -10,14 +10,29 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
 {
     //Reading json file
     std::ifstream json_file(filename);
-    json tools_errors = json::parse(json_file);
+    json instruments_data = json::parse(json_file);
 
     //For each column of table setting name of instrument and error
     for(Variable& curr_variable : variables)
-    {   
-        std::string curr_variable_table_name = curr_variable.get_name_tables();
-        curr_variable.set_name_instrument(tools_errors[curr_variable_table_name]["name_of_instrument"]);
-        curr_variable.set_error_instrument(tools_errors[curr_variable_table_name]["value_of_error"])
+    { 
+        //Pulling out data of instrument
+        std::string variable_name = curr_variable.get_name_tables();
+        std::string name_instrument = instruments_data["Variables"][variable_name];
+        std::string type_of_error = instruments_data["Instruments"][name_instrument]["type"];
+        std::string value_of_error_string = instruments_data["Instruments"][name_instrument]["error"];
+        double value_of_error = atof(value_of_error_string.c_str());
+        
+        //Creating instrument and adding it to each variable
+        if(type_of_error == "Absolute")
+        {
+            AbsoluteInstrument instrument(name_instrument, value_of_error);
+            curr_variable.add_instrument(&instrument);
+        }
+        else
+        {
+            RelativeInstrument instrument(name_instrument, value_of_error);
+            curr_variable.add_instrument(&instrument);
+        }
     }
 
     json_file.close();
