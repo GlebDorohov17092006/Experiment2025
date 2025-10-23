@@ -5,12 +5,12 @@ RelativeInstrument::RelativeInstrument(const std::string &name, double error)
 {
 }
 
-double RelativeInstrument::get_error() const
+double RelativeInstrument::get_error(size_t index, double value) const
 {
-    return error;
+    return error * value;
 }
 
-void RelativeInstrument::set_error(double error)
+void RelativeInstrument::set_error(size_t index, double error)
 {
     this->error = error;
 }
