@@ -1,17 +1,16 @@
 {
-    "name_of_column" : {
-        "name_of_instrument" : "",
-        "value_of_error" : 0.5 
+  "Instruments" : {
+    "Voltmeter" : {
+      "type" : "Relative",
+      "error" : 0.05
     },
-
-    "another_name_of_column" : {
-        "name_of_instrument" : "",
-        "value_of_error" : 0.5 
-    },
-
-    "Guide_for_using" : {
-        "name_of_column" : "Exactly like in table; type: string",
-        "name_of_instrument" : "type: string",
-        "value_of_error" : "type: double"
+    "Ammeter" : {
+      "type" : "Absolute",
+      "error" : 0.001
     }
+  },
+  "Variables" : {
+    "U" : "Voltmeter",
+    "I" : "Ammeter"
+  }
 }
