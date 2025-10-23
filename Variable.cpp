@@ -2,15 +2,11 @@
 #include <stdexcept>
 
 Variable::Variable(std::vector<double> measurements, const std::string &name_tables,
-                   const std::string &name_calculated, const Instrument &instrument)
+                   const std::string &name_calculated, std::vector<Instrument *> &instruments)
     : measurements(measurements),
       name_tables(name_tables),
       name_calculated(name_calculated),
-      instrument(instrument)
-{
-}
-
-Variable::Variable()
+      instruments(instruments)
 {
 }
 
@@ -24,9 +20,9 @@ std::string Variable::get_name_calculated() const
     return name_calculated;
 }
 
-Instrument Variable::get_instrument() const
+Instrument *Variable::get_instrument(size_t index) const
 {
-    return instrument;
+    return instruments[index];
 }
 
 double Variable::get_measurement(size_t index) const
@@ -67,12 +63,25 @@ void Variable::add_measurement(double measurement)
     measurements.push_back(measurement);
 }
 
-void Variable::set_name_instrument(const std::string &name)
+void Variable::set_name_instrument(size_t index, const std::string &name)
 {
-    instrument.set_name(name);
+    if (index >= instruments.size())
+    {
+        throw std::out_of_range("The index goes beyond the bounds of the instruments array");
+    }
+    instruments[index]->set_name(name);
 }
 
-void Variable::set_error_instrument(double error)
+void Variable::set_error_instrument(size_t index, double error)
 {
-    instrument.set_error(error);
+    if (index >= instruments.size())
+    {
+        throw std::out_of_range("The index goes beyond the bounds of the instruments array");
+    }
+    instruments[index]->set_error(error);
+}
+
+void Variable::add_instrument(Instrument *instrument)
+{
+    instruments.push_back(instrument);
 }

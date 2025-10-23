@@ -1,18 +1,18 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 class Instrument
 {
-private:
+protected:
     std::string name;
-    double error;
 
 public:
-    Instrument(const std::string &name, double error);
-    Instrument();
+    Instrument(const std::string &name = "");
     std::string get_name() const;
-    double get_error() const;
+    virtual double get_error() const;
     void set_name(const std::string &name);
-    void set_error(double error);
+    virtual void set_error(double error);
+    virtual void set_error(std::vector<double> error);
 };
