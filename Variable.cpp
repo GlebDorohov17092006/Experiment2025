@@ -20,11 +20,6 @@ std::string Variable::get_name_calculated() const
     return name_calculated;
 }
 
-double Variable::get_instrument_error(size_t index, double value) const
-{
-    return instrument->get_error(index, value);
-}
-
 double Variable::get_measurement(size_t index) const
 {
     if (index >= measurements.size())
@@ -63,6 +58,16 @@ void Variable::add_measurement(double measurement)
     measurements.push_back(measurement);
 }
 
+std::string Variable::get_name_instrument() const
+{
+    return instrument->get_name();
+}
+
+double Variable::get_error_instrument(size_t index, double value) const
+{
+    return instrument->get_error(index, value);
+}
+
 void Variable::set_name_instrument(const std::string &name)
 {
     instrument->set_name(name);
@@ -71,4 +76,9 @@ void Variable::set_name_instrument(const std::string &name)
 void Variable::set_error_instrument(size_t index, double error)
 {
     instrument->set_error(index, error);
+}
+
+void Variable::add_instrument(Instrument *instrument)
+{
+    this->instrument = instrument;
 }
