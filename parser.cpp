@@ -6,6 +6,15 @@
 
 using json = nlohmann::json;
 
+std::vector<Variable> parser(const std::string& filename_csv, const std::string& filename_json)
+{
+    std::vector<Variable> variables =  parser_csv(filename_csv);
+    parser_json(variables, filename_json);
+
+    return variables;
+
+}
+
 void parser_json(std::vector<Variable> &variables, const std::string& filename)
 {
     //Reading json file
@@ -85,9 +94,6 @@ std::vector<Variable> parser_csv(const std::string& filename)
     }
 
     csv_file.close();
-
-    //Getting instruments and errors for each variables
-    parser_json(variables);
 
     return variables;
 }
