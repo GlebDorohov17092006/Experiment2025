@@ -9,6 +9,7 @@ private:
 
 public:
     AbsoluteInstrument(const std::string &name = "", double error = 0.0);
-    double get_error(size_t index = 0, double value = 0.0) const override;
-    void set_error(size_t index, double error) override;
+    //double get_error() const override;
+    //void set_error(double error) override;
+    void add_error(double error) override;
 };

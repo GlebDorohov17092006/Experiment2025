@@ -11,5 +11,5 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename);
 std::vector<Variable> parser_csv(const std::string& filename);
 
 //General parser
-std::vector<Variable> parser(const std::string& filename);
+std::vector<Variable> parser(const std::string& filename_csv, const std::string& filename_json);
 

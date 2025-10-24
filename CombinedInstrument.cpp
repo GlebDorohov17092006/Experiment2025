@@ -1,7 +1,7 @@
-#include "CombinedInstrument.h"
-#include <stdexcept>
+//#include "CombinedInstrument.h"
+//#include <stdexcept>
 
-double CombinedInstrument::get_error(size_t index, double value) const
+/*double CombinedInstrument::get_error() const
 {
     if (index >= errors.size())
     {
@@ -23,3 +23,4 @@ void CombinedInstrument::add_error(double error)
 {
     errors.push_back(error);
 }
+*/

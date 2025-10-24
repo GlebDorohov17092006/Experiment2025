@@ -57,7 +57,7 @@ void Variable::add_measurement(double measurement)
 {
     measurements.push_back(measurement);
 }
-
+/*
 std::string Variable::get_name_instrument() const
 {
     return instrument->get_name();
@@ -65,7 +65,7 @@ std::string Variable::get_name_instrument() const
 
 double Variable::get_error_instrument(size_t index, double value) const
 {
-    return instrument->get_error(index, value);
+    return instrument->get_error();
 }
 
 void Variable::set_name_instrument(const std::string &name)
@@ -75,8 +75,9 @@ void Variable::set_name_instrument(const std::string &name)
 
 void Variable::set_error_instrument(size_t index, double error)
 {
-    instrument->set_error(index, error);
+    instrument->set_error(error);
 }
+*/
 
 void Variable::add_instrument(Instrument *instrument)
 {
