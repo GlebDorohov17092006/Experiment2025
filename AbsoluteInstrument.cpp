@@ -4,16 +4,18 @@ AbsoluteInstrument::AbsoluteInstrument(const std::string &name, double error)
     : Instrument(name), error(error)
 {
 }
-
-double AbsoluteInstrument::get_error(size_t index, double value) const
+/*
+double AbsoluteInstrument::get_error() const
 {
-    (void)index;
-    (void)value;
-    return error;
+    return this->error;
 }
 
-void AbsoluteInstrument::set_error(size_t index, double error)
+void AbsoluteInstrument::set_error(double error)
 {
-    (void)index;
+    this->error = error;
+}
+*/
+void AbsoluteInstrument::add_error(double error)
+{
     this->error = error;
 }
