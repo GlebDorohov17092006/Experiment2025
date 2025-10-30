@@ -2,7 +2,6 @@
 #include "./ui_mainwindow.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
-#include <QInputDialog>
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -13,6 +12,11 @@
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QComboBox>
+#include <QGridLayout>
+#include <QVBoxLayout>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QFont>
 #include <algorithm>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -42,27 +46,33 @@ MainWindow::MainWindow(QWidget *parent)
     // Автоматическая перерисовка графика при изменении данных в таблице
     connect(ui->tableWidget, &QTableWidget::cellChanged, this, &MainWindow::drawSimpleGraph);
     
-    // Подключаем пункт меню "Создать отчет"
+
     connect(ui->action_3, &QAction::triggered, this, &MainWindow::openReportDialog);
+    
+
+    connect(ui->action_6, &QAction::triggered, this, [this]() { addDynamicPlotTab("График"); });
+    connect(ui->action_7, &QAction::triggered, this, [this]() { addDynamicPlotTab("Гистограмма"); });
+    connect(ui->action_8, &QAction::triggered, this, [this]() { addDynamicPlotTab("Скаттерплот"); });
+    connect(ui->action_5, &QAction::triggered, this, [this]() { removeGraph(); });
     
     // Синхронизация вкладок tabPlotSettings и tabPlot
     connect(ui->tabPlotSettings, &QTabWidget::currentChanged, this, &MainWindow::onPlotSettingsTabChanged);
     connect(ui->tabPlot, &QTabWidget::currentChanged, this, &MainWindow::onPlotTabChanged);
     
-    // Подключаем обновление названий осей при изменении полей
+    // Обработчик закрытия вкладок через крестик
+    connect(ui->tabPlot, &QTabWidget::tabCloseRequested, this, &MainWindow::removeGraph);
+    
     connect(ui->lineEdit_xAxisLabel, &QLineEdit::textChanged, this, &MainWindow::drawSimpleGraph);
     connect(ui->lineEdit_yAxisLabel, &QLineEdit::textChanged, this, &MainWindow::drawSimpleGraph);
     
-    // Обработчик двойного клика для выбора инструмента
+
     connect(ui->variableInstrumentsTable, &QTableWidget::cellDoubleClicked, this, &MainWindow::onInstrumentCellDoubleClicked);
     
-    // Обновляем тексты инструментов при изменении таблицы инструментов
     connect(ui->instrumentsTable, &QTableWidget::cellChanged, this, &MainWindow::updateInstrumentTexts);
     
-    // Настройка таблицы инструментов для переменных
+
     ui->variableInstrumentsTable->horizontalHeader()->setDefaultSectionSize(200);
     
-    // Синхронизируем таблицу инструментов
     syncVariableInstrumentsTable();
 }
 
@@ -130,22 +140,17 @@ void MainWindow::drawSimpleGraph()
     QString yLabel = ui->lineEdit_yAxisLabel->text().trimmed();
     
 
-    
-    // Настройка осей
     ui->linePlot->xAxis->setLabel(xLabel);
     ui->linePlot->yAxis->setLabel(yLabel);
     
-    // Автоматическое масштабирование осей по данным
     ui->linePlot->rescaleAxes();
     
-    // Обновляем отображение
     ui->linePlot->replot();
 }
 
 void MainWindow::onPlotSettingsTabChanged(int index)
 {
     // Синхронизируем табы: когда меняется вкладка настроек, меняем вкладку графика
-    // Временно отключаем сигнал, чтобы избежать рекурсии
     ui->tabPlot->blockSignals(true);
     ui->tabPlot->setCurrentIndex(index);
     ui->tabPlot->blockSignals(false);
@@ -154,7 +159,6 @@ void MainWindow::onPlotSettingsTabChanged(int index)
 void MainWindow::onPlotTabChanged(int index)
 {
     // Синхронизируем табы: когда меняется вкладка графика, меняем вкладку настроек
-    // Временно отключаем сигнал, чтобы избежать рекурсии
     ui->tabPlotSettings->blockSignals(true);
     ui->tabPlotSettings->setCurrentIndex(index);
     ui->tabPlotSettings->blockSignals(false);
@@ -169,17 +173,33 @@ void MainWindow::addColumn()
     QString headerName = QString("Столбец %1").arg(currentColumns + 1);
     ui->tableWidget->setHorizontalHeaderItem(currentColumns, new QTableWidgetItem(headerName));
     
-    // Добавляем столбец в таблицу инструментов для переменных
+
     ui->variableInstrumentsTable->insertColumn(currentColumns);
     ui->variableInstrumentsTable->setHorizontalHeaderItem(currentColumns, new QTableWidgetItem(headerName));
     
-    // Создаем ячейку с текстом вместо ComboBox
-    QTableWidgetItem* item = new QTableWidgetItem("(не выбран)");
+    QTableWidgetItem* item = new QTableWidgetItem("-");
     item->setData(Qt::UserRole, -1); // -1 означает, что инструмент не выбран
     ui->variableInstrumentsTable->setItem(0, currentColumns, item);
     
     // Добавляем строку в таблицу настроек графика
     addPlotSettingsRow(headerName);
+    
+    // Добавляем строку в таблицы настроек динамически добавленных графиков
+    for (auto& plotTab : m_plotTabs) {
+        int rowIndex = plotTab.settingsTable->rowCount();
+        plotTab.settingsTable->insertRow(rowIndex);
+        plotTab.settingsTable->setVerticalHeaderItem(rowIndex, new QTableWidgetItem(headerName));
+        
+        QTableWidgetItem* checkItem = new QTableWidgetItem();
+        checkItem->setCheckState(Qt::Checked);
+        plotTab.settingsTable->setItem(rowIndex, 0, checkItem);
+        
+        // Добавляем остальные колонки
+        int columnCount = plotTab.settingsTable->columnCount();
+        for (int j = 1; j < columnCount; ++j) {
+            plotTab.settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
+        }
+    }
     
     // Перерисовываем график
     drawSimpleGraph();
@@ -229,6 +249,13 @@ void MainWindow::removeColumn()
                     }
                     if (col < ui->tableWidget_4->rowCount()) {
                         ui->tableWidget_4->removeRow(col);
+                    }
+                    
+                    // Удаляем соответствующую строку из таблиц настроек динамически добавленных графиков
+                    for (auto& plotTab : m_plotTabs) {
+                        if (col < plotTab.settingsTable->rowCount()) {
+                            plotTab.settingsTable->removeRow(col);
+                        }
                     }
                 }
                 
@@ -380,6 +407,13 @@ void MainWindow::onColumnHeaderDoubleClicked(int col)
                 ui->tableWidget_4->setVerticalHeaderItem(col, new QTableWidgetItem(newName));
             }
             
+            // Обновляем вертикальный заголовок в таблицах настроек динамически добавленных графиков
+            for (auto& plotTab : m_plotTabs) {
+                if (col < plotTab.settingsTable->rowCount()) {
+                    plotTab.settingsTable->setVerticalHeaderItem(col, new QTableWidgetItem(newName));
+                }
+            }
+            
             // Перерисовываем график, так как изменились подписи осей
             drawSimpleGraph();
         }
@@ -433,7 +467,7 @@ void MainWindow::syncVariableInstrumentsTable()
         ui->variableInstrumentsTable->setHorizontalHeaderItem(instrumentTableColumns, new QTableWidgetItem(columnName));
         
         // Создаем ячейку с текстом вместо ComboBox
-        QTableWidgetItem* item = new QTableWidgetItem("(не выбран)");
+        QTableWidgetItem* item = new QTableWidgetItem("-");
         item->setData(Qt::UserRole, -1); // -1 означает, что инструмент не выбран
         ui->variableInstrumentsTable->setItem(0, instrumentTableColumns, item);
         
@@ -473,19 +507,48 @@ void MainWindow::syncPlotSettingsTables()
             ui->tableWidget_4->setVerticalHeaderItem(i, new QTableWidgetItem(columnName));
         }
     }
+    
+    // Синхронизируем таблицы настроек динамически добавленных графиков
+    for (auto& plotTab : m_plotTabs) {
+        // Добавляем недостающие строки
+        while (plotTab.settingsTable->rowCount() < mainTableColumns) {
+            QString columnName = getColumnName(plotTab.settingsTable->rowCount());
+            int rowIndex = plotTab.settingsTable->rowCount();
+            plotTab.settingsTable->insertRow(rowIndex);
+            plotTab.settingsTable->setVerticalHeaderItem(rowIndex, new QTableWidgetItem(columnName));
+            
+            QTableWidgetItem* checkItem = new QTableWidgetItem();
+            checkItem->setCheckState(Qt::Checked);
+            plotTab.settingsTable->setItem(rowIndex, 0, checkItem);
+            
+            // Добавляем остальные колонки
+            int columnCount = plotTab.settingsTable->columnCount();
+            for (int j = 1; j < columnCount; ++j) {
+                plotTab.settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
+            }
+        }
+        
+        // Обновляем вертикальные заголовки
+        for (int i = 0; i < mainTableColumns; ++i) {
+            QString columnName = getColumnName(i);
+            if (i < plotTab.settingsTable->rowCount()) {
+                plotTab.settingsTable->setVerticalHeaderItem(i, new QTableWidgetItem(columnName));
+            }
+        }
+    }
 }
 
 QString MainWindow::getInstrumentDisplayText(int instrumentIndex)
 {
     if (instrumentIndex < 0 || instrumentIndex >= ui->instrumentsTable->rowCount()) {
-        return "(не выбран)";
+        return "-";
     }
     
     QTableWidgetItem* nameItem = ui->instrumentsTable->item(instrumentIndex, 0);
     QTableWidgetItem* errorItem = ui->instrumentsTable->item(instrumentIndex, 2);
     
     if (!nameItem || nameItem->text().isEmpty()) {
-        return "(не выбран)";
+        return "-";
     }
     
     QString displayText = nameItem->text();
@@ -523,13 +586,13 @@ void MainWindow::onInstrumentCellDoubleClicked(int row, int column)
     
     // Создаем временный ComboBox
     QComboBox* comboBox = new QComboBox(ui->variableInstrumentsTable);
-    comboBox->addItem("(не выбран)", -1);
+    comboBox->addItem("-", -1);
     
     // Заполняем список инструментами
     int instrumentCount = ui->instrumentsTable->rowCount();
     for (int i = 0; i < instrumentCount; ++i) {
         QString displayText = getInstrumentDisplayText(i);
-        if (displayText != "(не выбран)") {
+        if (displayText != "-") {
             comboBox->addItem(displayText, i);
         }
     }
@@ -612,4 +675,141 @@ void MainWindow::addPlotSettingsRow(const QString& columnName)
     
     ui->tableWidget_4->setItem(rowIndex, 1, new QTableWidgetItem(""));
     ui->tableWidget_4->setItem(rowIndex, 2, new QTableWidgetItem(""));
+}
+
+void MainWindow::addDynamicPlotTab(const QString& plotType)
+{
+    int fixedTabCount = 1;
+    
+    int dynamicTabCount = 0;
+    for (const auto& tab : m_plotTabs) {
+        if (tab.name.startsWith(plotType)) {
+            dynamicTabCount++;
+        }
+    }
+    
+    QString tabName = plotType;
+    int totalCount = fixedTabCount + dynamicTabCount;
+    tabName += QString(" %1").arg(totalCount + 1);
+    
+    // Создаем новый виджет для вкладки графика
+    QWidget* plotWidget = new QWidget();
+    QGridLayout* plotLayout = new QGridLayout(plotWidget);
+    QCustomPlot* plot = new QCustomPlot(plotWidget);
+    plot->setInteraction(QCP::iRangeDrag, true);
+    plot->setInteraction(QCP::iRangeZoom, true);
+    plotLayout->addWidget(plot, 0, 0);
+    
+    // Создаем вкладку в tabPlot
+    int plotTabIndex = ui->tabPlot->addTab(plotWidget, tabName);
+    
+    QWidget* settingsWidget = new QWidget();
+    QVBoxLayout* settingsLayout = new QVBoxLayout(settingsWidget);
+    
+    QFormLayout* formLayout = new QFormLayout();
+    QLabel* labelX = new QLabel("Название оси X:", settingsWidget);
+    QLineEdit* lineEditX = new QLineEdit(settingsWidget);
+    lineEditX->setMaximumWidth(300);
+    formLayout->addRow(labelX, lineEditX);
+    
+    QLabel* labelY = new QLabel("Название оси Y:", settingsWidget);
+    QLineEdit* lineEditY = new QLineEdit(settingsWidget);
+    lineEditY->setMaximumWidth(300);
+    formLayout->addRow(labelY, lineEditY);
+    
+    settingsLayout->addLayout(formLayout);
+    
+    // Создаем таблицу настроек
+    QTableWidget* settingsTable = new QTableWidget(settingsWidget);
+    settingsTable->horizontalHeader()->setStretchLastSection(true);
+    settingsTable->verticalHeader()->setVisible(true);
+    
+    QStringList headers;
+    int tableColumnCount = 4;
+    
+    if (plotType == "График") {
+        headers << "Отрисовка" << "Тип линийи" << "Ширина" << "Тип точки" << "Размер точки" << "Цвет";
+        tableColumnCount = 6;
+    } else if (plotType == "Гистограмма") {
+        headers << "Отрисовка" << "Интервал" << "Цвет";
+        tableColumnCount = 3;
+    } else if (plotType == "Скаттерплот") {
+        headers << "Отрисовка" << "Размер точки" << "Тип точки" << "Цвет";
+        tableColumnCount = 4;
+    }
+    
+    settingsTable->setColumnCount(tableColumnCount);
+    
+    QFont headerFont = settingsTable->horizontalHeader()->font();
+    headerFont.setBold(true);
+    settingsTable->horizontalHeader()->setFont(headerFont);
+    settingsTable->setHorizontalHeaderLabels(headers);
+    
+    int columnCount = ui->tableWidget->columnCount();
+    for (int i = 0; i < columnCount; ++i) {
+        QString columnName = getColumnName(i);
+        int rowIndex = settingsTable->rowCount();
+        settingsTable->insertRow(rowIndex);
+        settingsTable->setVerticalHeaderItem(rowIndex, new QTableWidgetItem(columnName));
+        
+        QTableWidgetItem* checkItem = new QTableWidgetItem();
+        checkItem->setCheckState(Qt::Checked);
+        settingsTable->setItem(rowIndex, 0, checkItem);
+        
+        for (int j = 1; j < tableColumnCount; ++j) {
+            settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
+        }
+    }
+    
+    settingsLayout->addWidget(settingsTable);
+    
+    int settingsTabIndex = ui->tabPlotSettings->addTab(settingsWidget, tabName);
+    
+    // Сохраняем информацию о графике
+    PlotTab plotTab;
+    plotTab.name = tabName;
+    plotTab.type = plotType;
+    plotTab.plot = plot;
+    plotTab.settingsTab = settingsWidget;
+    plotTab.settingsTable = settingsTable;
+    m_plotTabs.append(plotTab);
+}
+
+void MainWindow::removeGraph(int index)
+{
+    int currentIndex = (index == -1) ? ui->tabPlot->currentIndex() : index;
+    
+    if (currentIndex < 3) {
+        return;
+    }
+    
+    int dynamicIndex = currentIndex - 3;
+    if (dynamicIndex >= 0 && dynamicIndex < m_plotTabs.size()) {
+        QString graphName = m_plotTabs[dynamicIndex].name;
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Подтверждение удаления");
+        msgBox.setText(QString("Вы действительно хотите удалить график '%1'?").arg(graphName));
+        QPushButton* yesButton = msgBox.addButton("Да", QMessageBox::AcceptRole);
+        QPushButton* noButton = msgBox.addButton("Нет", QMessageBox::RejectRole);
+        msgBox.setDefaultButton(yesButton);
+        msgBox.exec();
+        
+        if (msgBox.clickedButton() == yesButton) {
+            ui->tabPlot->removeTab(currentIndex);
+            
+            int settingsTabIndex = -1;
+            for (int i = 0; i < ui->tabPlotSettings->count(); ++i) {
+                if (ui->tabPlotSettings->widget(i) == m_plotTabs[dynamicIndex].settingsTab) {
+                    settingsTabIndex = i;
+                    break;
+                }
+            }
+            
+            if (settingsTabIndex >= 0) {
+                ui->tabPlotSettings->removeTab(settingsTabIndex);
+            }
+            
+            m_plotTabs.removeAt(dynamicIndex);
+        }
+    }
 }
