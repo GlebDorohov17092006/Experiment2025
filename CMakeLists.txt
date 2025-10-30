@@ -17,15 +17,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost/spirit/include)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport)
 
-set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-        reportdialog.cpp
-        reportdialog.h
-        reportdialog.ui
-)
+file( GLOB PROJECT_SOURCES *.cpp *.h *.ui)
 
 
 
