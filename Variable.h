@@ -3,8 +3,6 @@
 #include <vector>
 #include <string>
 #include "Instrument.h"
-#include "AbsoluteInstrument.h"
-#include "RelativeInstrument.h"
 
 class Variable
 {

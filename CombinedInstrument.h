@@ -9,6 +9,7 @@ private:
     std::vector<double> errors;
 
 public:
+    CombinedInstrument(const std::string &name = "");
     double get_error(size_t index, double value) const override;
     void set_error(size_t index, double error) override;
     void add_error(double error);

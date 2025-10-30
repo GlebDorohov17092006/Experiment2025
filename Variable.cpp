@@ -60,21 +60,37 @@ void Variable::add_measurement(double measurement)
 
 std::string Variable::get_name_instrument() const
 {
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
     return instrument->get_name();
 }
 
 double Variable::get_error_instrument(size_t index, double value) const
 {
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
     return instrument->get_error(index, value);
 }
 
 void Variable::set_name_instrument(const std::string &name)
 {
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
     instrument->set_name(name);
 }
 
 void Variable::set_error_instrument(size_t index, double error)
 {
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
     instrument->set_error(index, error);
 }
 

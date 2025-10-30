@@ -14,7 +14,9 @@ private:
 public:
     Experiment(const Experiment &) = delete;
     Experiment &operator=(const Experiment &) = delete;
+    ~Experiment();
     static Experiment *get_instance(std::vector<Variable> variables = {}, std::vector<Variable> calculated_variables = {});
+    static void destroy_instance();
     std::shared_ptr<Variable> get_calculated_variable(size_t index) const;
     std::shared_ptr<Variable> get_variable(size_t index) const;
     size_t get_variables_count() const;

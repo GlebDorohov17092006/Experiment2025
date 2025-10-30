@@ -18,6 +18,16 @@ Experiment *Experiment::get_instance(std::vector<Variable> variables, std::vecto
     return instance;
 }
 
+void Experiment::destroy_instance()
+{
+    delete instance;
+    instance = nullptr;
+}
+
+Experiment::~Experiment()
+{
+}
+
 std::shared_ptr<Variable> Experiment::get_variable(size_t index) const
 {
     if (index >= variables.size())
