@@ -43,6 +43,19 @@ private:
     void updateInstrumentTexts();
     QString getInstrumentDisplayText(int instrumentIndex);
     void addPlotSettingsRow(const QString& columnName);
+<<<<<<< HEAD
+=======
+    void addDynamicPlotTab(const QString& plotType);
+    void setupPlotSettingsDelegates(QTableWidget* settingsTable, const QString& plotType);
+    void setupDefaultPlotSettingsDelegates();
+    struct PlotTab {
+        QString name;
+        QString type;
+        QCustomPlot* plot;
+        QWidget* settingsTab;
+        QTableWidget* settingsTable;
+    };
+>>>>>>> 08b40e3 (Used ItemDelegate in graph settings)
 
 private:
     Ui::MainWindow *ui;
