@@ -4,7 +4,11 @@
 #include "parser.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
+<<<<<<< HEAD
 #include <QInputDialog>
+=======
+#include "ComboItemDelegate.h"
+>>>>>>> 08b40e3 (Used ItemDelegate in graph settings)
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -68,6 +72,8 @@ MainWindow::MainWindow(QWidget *parent)
     
     // Синхронизируем таблицу инструментов
     syncVariableInstrumentsTable();
+    
+    setupDefaultPlotSettingsDelegates();
 }
 
 MainWindow::~MainWindow()
@@ -620,8 +626,109 @@ void MainWindow::addPlotSettingsRow(const QString& columnName)
 
 void MainWindow::on_import_CSV_triggered()
 {
+<<<<<<< HEAD
     //Creating dialog window
     QFileDialog dialog(this);
+=======
+    int fixedTabCount = 1;
+    
+    int dynamicTabCount = 0;
+    for (const auto& tab : m_plotTabs) {
+        if (tab.name.startsWith(plotType)) {
+            dynamicTabCount++;
+        }
+    }
+    
+    QString tabName = plotType;
+    int totalCount = fixedTabCount + dynamicTabCount;
+    tabName += QString(" %1").arg(totalCount + 1);
+    
+    // Создаем новый виджет для вкладки графика
+    QWidget* plotWidget = new QWidget();
+    QGridLayout* plotLayout = new QGridLayout(plotWidget);
+    QCustomPlot* plot = new QCustomPlot(plotWidget);
+    plot->setInteraction(QCP::iRangeDrag, true);
+    plot->setInteraction(QCP::iRangeZoom, true);
+    plotLayout->addWidget(plot, 0, 0);
+    
+    // Создаем вкладку в tabPlot
+    int plotTabIndex = ui->tabPlot->addTab(plotWidget, tabName);
+    
+    QWidget* settingsWidget = new QWidget();
+    QVBoxLayout* settingsLayout = new QVBoxLayout(settingsWidget);
+    
+    QFormLayout* formLayout = new QFormLayout();
+    QLabel* labelX = new QLabel("Название оси X:", settingsWidget);
+    QLineEdit* lineEditX = new QLineEdit(settingsWidget);
+    lineEditX->setMaximumWidth(300);
+    formLayout->addRow(labelX, lineEditX);
+    
+    QLabel* labelY = new QLabel("Название оси Y:", settingsWidget);
+    QLineEdit* lineEditY = new QLineEdit(settingsWidget);
+    lineEditY->setMaximumWidth(300);
+    formLayout->addRow(labelY, lineEditY);
+    
+    settingsLayout->addLayout(formLayout);
+    
+    // Создаем таблицу настроек
+    QTableWidget* settingsTable = new QTableWidget(settingsWidget);
+    settingsTable->horizontalHeader()->setStretchLastSection(true);
+    settingsTable->verticalHeader()->setVisible(true);
+    
+    QStringList headers;
+    int tableColumnCount = 4;
+    
+    if (plotType == "График") {
+        headers << "Отрисовка" << "Тип линийи" << "Ширина" << "Тип точки" << "Размер точки" << "Цвет";
+        tableColumnCount = 6;
+    } else if (plotType == "Гистограмма") {
+        headers << "Отрисовка" << "Интервал" << "Цвет";
+        tableColumnCount = 3;
+    } else if (plotType == "Скаттерплот") {
+        headers << "Отрисовка" << "Размер точки" << "Тип точки" << "Цвет";
+        tableColumnCount = 4;
+    }
+    
+    settingsTable->setColumnCount(tableColumnCount);
+    
+    QFont headerFont = settingsTable->horizontalHeader()->font();
+    headerFont.setBold(true);
+    settingsTable->horizontalHeader()->setFont(headerFont);
+    settingsTable->setHorizontalHeaderLabels(headers);
+    
+    // Настраиваем делегаты для редактирования ячеек
+    setupPlotSettingsDelegates(settingsTable, plotType);
+    
+    int columnCount = ui->tableWidget->columnCount();
+    for (int i = 0; i < columnCount; ++i) {
+        QString columnName = getColumnName(i);
+        int rowIndex = settingsTable->rowCount();
+        settingsTable->insertRow(rowIndex);
+        settingsTable->setVerticalHeaderItem(rowIndex, new QTableWidgetItem(columnName));
+        
+        QTableWidgetItem* checkItem = new QTableWidgetItem();
+        checkItem->setCheckState(Qt::Checked);
+        settingsTable->setItem(rowIndex, 0, checkItem);
+        
+        for (int j = 1; j < tableColumnCount; ++j) {
+            settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
+        }
+    }
+    
+    settingsLayout->addWidget(settingsTable);
+    
+    int settingsTabIndex = ui->tabPlotSettings->addTab(settingsWidget, tabName);
+    
+    // Сохраняем информацию о графике
+    PlotTab plotTab;
+    plotTab.name = tabName;
+    plotTab.type = plotType;
+    plotTab.plot = plot;
+    plotTab.settingsTab = settingsWidget;
+    plotTab.settingsTable = settingsTable;
+    m_plotTabs.append(plotTab);
+}
+>>>>>>> 08b40e3 (Used ItemDelegate in graph settings)
 
     //Setting design of dialog window
     dialog.setAcceptMode(QFileDialog::AcceptOpen);
@@ -663,3 +770,85 @@ void MainWindow::on_import_CSV_triggered()
     }
 }
 
+<<<<<<< HEAD
+=======
+void MainWindow::setupPlotSettingsDelegates(QTableWidget* settingsTable, const QString& plotType)
+{
+    if (plotType == "График") {
+        // Столбец 1: Тип линии
+        ComboItemDelegate* lineTypeDelegate = new ComboItemDelegate(this);
+        lineTypeDelegate->addItem("Сплошная", "line");
+        lineTypeDelegate->addItem("Пунктирная", "none");
+        lineTypeDelegate->addItem("Ступенчатая", "step");
+        settingsTable->setItemDelegateForColumn(1, lineTypeDelegate);
+        
+        // Столбец 3: Тип точки
+        ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
+        pointTypeDelegate->addItem("Круг", "circle");
+        pointTypeDelegate->addItem("Квадрат", "square");
+        pointTypeDelegate->addItem("Крестик", "cross");
+        pointTypeDelegate->addItem("Плюс", "plus");
+        pointTypeDelegate->addItem("Ромб", "diamond");
+        pointTypeDelegate->addItem("Без точки", "none");
+        settingsTable->setItemDelegateForColumn(3, pointTypeDelegate);
+    }
+    else if (plotType == "Гистограмма") {
+        // Столбец 1: Интервал
+        ComboItemDelegate* intervalDelegate = new ComboItemDelegate(this);
+        intervalDelegate->addItem("Автоматически", "auto");
+        intervalDelegate->addItem("10", "10");
+        intervalDelegate->addItem("20", "20");
+        intervalDelegate->addItem("50", "50");
+        intervalDelegate->addItem("100", "100");
+        settingsTable->setItemDelegateForColumn(1, intervalDelegate);
+    }
+    else if (plotType == "Скаттерплот") {
+        // Столбец 2: Тип точки
+        ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
+        pointTypeDelegate->addItem("Круг", "circle");
+        pointTypeDelegate->addItem("Квадрат", "square");
+        pointTypeDelegate->addItem("Крестик", "cross");
+        pointTypeDelegate->addItem("Плюс", "plus");
+        pointTypeDelegate->addItem("Ромб", "diamond");
+        settingsTable->setItemDelegateForColumn(2, pointTypeDelegate);
+    }
+}
+
+void MainWindow::setupDefaultPlotSettingsDelegates()
+{
+    // График,  столбец 1: Тип линии
+    ComboItemDelegate* lineTypeDelegate = new ComboItemDelegate(this);
+    lineTypeDelegate->addItem("Сплошная", "line");
+    lineTypeDelegate->addItem("Пунктирная", "none");
+    lineTypeDelegate->addItem("Ступенчатая", "step");
+    ui->tableWidget_2->setItemDelegateForColumn(1, lineTypeDelegate);
+    
+    // График, столбец 3: Тип точки
+    ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
+    pointTypeDelegate->addItem("Круг", "circle");
+    pointTypeDelegate->addItem("Квадрат", "square");
+    pointTypeDelegate->addItem("Крестик", "cross");
+    pointTypeDelegate->addItem("Плюс", "plus");
+    pointTypeDelegate->addItem("Ромб", "diamond");
+    pointTypeDelegate->addItem("Без точки", "none");
+    ui->tableWidget_2->setItemDelegateForColumn(3, pointTypeDelegate);
+    
+    // Гистограмма, столбец 1: Интервал
+    ComboItemDelegate* intervalDelegate = new ComboItemDelegate(this);
+    intervalDelegate->addItem("Автоматически", "auto");
+    intervalDelegate->addItem("10", "10");
+    intervalDelegate->addItem("20", "20");
+    intervalDelegate->addItem("50", "50");
+    intervalDelegate->addItem("100", "100");
+    ui->tableWidget_5->setItemDelegateForColumn(1, intervalDelegate);
+    
+    // Скаттерплот, столбец 2: Тип точки
+    ComboItemDelegate* scatterPointTypeDelegate = new ComboItemDelegate(this);
+    scatterPointTypeDelegate->addItem("Круг", "circle");
+    scatterPointTypeDelegate->addItem("Квадрат", "square");
+    scatterPointTypeDelegate->addItem("Крестик", "cross");
+    scatterPointTypeDelegate->addItem("Плюс", "plus");
+    scatterPointTypeDelegate->addItem("Ромб", "diamond");
+    ui->tableWidget_4->setItemDelegateForColumn(2, scatterPointTypeDelegate);
+}
+>>>>>>> 08b40e3 (Used ItemDelegate in graph settings)
