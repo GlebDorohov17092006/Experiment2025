@@ -55,11 +55,14 @@ else()
 endif()
 
 add_subdirectory(libs/qcustomplot)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(libs/json)
 
 target_link_libraries(Experiment2025 PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::PrintSupport
     qcustomplot
+    nlohmann_json::nlohmann_json
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
