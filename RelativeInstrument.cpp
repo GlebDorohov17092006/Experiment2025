@@ -4,19 +4,15 @@ RelativeInstrument::RelativeInstrument(const std::string &name, double error)
     : Instrument(name), error(error)
 {
 }
-/*
-double RelativeInstrument::get_error() const
+
+double RelativeInstrument::get_error(size_t index, double value) const
 {
-    return this->error;
+    (void)index;
+    return error * value;
 }
 
-void RelativeInstrument::set_error(double error)
+void RelativeInstrument::set_error(size_t index, double error)
 {
-    this->error = error;
-}
-*/
-
-void RelativeInstrument::add_error(double error)
-{
+    (void)index;
     this->error = error;
 }

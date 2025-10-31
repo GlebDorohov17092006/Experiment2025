@@ -1,4 +1,4 @@
-/*#pragma once
+#pragma once
 
 #include <vector>
 #include "Instrument.h"
@@ -9,8 +9,8 @@ private:
     std::vector<double> errors;
 
 public:
-    //double get_error() const override;
-    //void set_error(double error) override;
-    void add_error(double error) override;
+    CombinedInstrument(const std::string &name = "");
+    double get_error(size_t index, double value) const override;
+    void set_error(size_t index, double error) override;
+    void add_error(double error);
 };
-*/

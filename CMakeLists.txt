@@ -20,6 +20,9 @@ endif()
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/qcustomplot)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost/spirit/include)
+
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport)
