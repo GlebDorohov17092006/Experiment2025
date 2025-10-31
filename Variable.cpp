@@ -4,9 +4,9 @@
 Variable::Variable(std::vector<double> measurements, const std::string &name_tables,
                    const std::string &name_calculated, Instrument *instrument)
     : measurements(measurements),
-      name_tables(name_tables),
-      name_calculated(name_calculated),
-      instrument(instrument)
+    name_tables(name_tables),
+    name_calculated(name_calculated),
+    instrument(instrument)
 {
 }
 
@@ -57,27 +57,42 @@ void Variable::add_measurement(double measurement)
 {
     measurements.push_back(measurement);
 }
-/*
+
 std::string Variable::get_name_instrument() const
 {
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
     return instrument->get_name();
 }
 
 double Variable::get_error_instrument(size_t index, double value) const
 {
-    return instrument->get_error();
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
+    return instrument->get_error(index, value);
 }
 
 void Variable::set_name_instrument(const std::string &name)
 {
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
     instrument->set_name(name);
 }
 
 void Variable::set_error_instrument(size_t index, double error)
 {
-    instrument->set_error(error);
+    if (instrument == nullptr)
+    {
+        throw std::runtime_error("Instrument pointer is null");
+    }
+    instrument->set_error(index, error);
 }
-*/
 
 void Variable::add_instrument(Instrument *instrument)
 {
