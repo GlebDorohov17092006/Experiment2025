@@ -2,6 +2,7 @@
 #include "./ui_mainwindow.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
+#include "ComboItemDelegate.h"
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -74,6 +75,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->variableInstrumentsTable->horizontalHeader()->setDefaultSectionSize(200);
     
     syncVariableInstrumentsTable();
+    
+    setupDefaultPlotSettingsDelegates();
 }
 
 MainWindow::~MainWindow()
@@ -745,6 +748,9 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     settingsTable->horizontalHeader()->setFont(headerFont);
     settingsTable->setHorizontalHeaderLabels(headers);
     
+    // Настраиваем делегаты для редактирования ячеек
+    setupPlotSettingsDelegates(settingsTable, plotType);
+    
     int columnCount = ui->tableWidget->columnCount();
     for (int i = 0; i < columnCount; ++i) {
         QString columnName = getColumnName(i);
@@ -812,4 +818,84 @@ void MainWindow::removeGraph(int index)
             m_plotTabs.removeAt(dynamicIndex);
         }
     }
+}
+
+void MainWindow::setupPlotSettingsDelegates(QTableWidget* settingsTable, const QString& plotType)
+{
+    if (plotType == "График") {
+        // Столбец 1: Тип линии
+        ComboItemDelegate* lineTypeDelegate = new ComboItemDelegate(this);
+        lineTypeDelegate->addItem("Сплошная", "line");
+        lineTypeDelegate->addItem("Пунктирная", "none");
+        lineTypeDelegate->addItem("Ступенчатая", "step");
+        settingsTable->setItemDelegateForColumn(1, lineTypeDelegate);
+        
+        // Столбец 3: Тип точки
+        ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
+        pointTypeDelegate->addItem("Круг", "circle");
+        pointTypeDelegate->addItem("Квадрат", "square");
+        pointTypeDelegate->addItem("Крестик", "cross");
+        pointTypeDelegate->addItem("Плюс", "plus");
+        pointTypeDelegate->addItem("Ромб", "diamond");
+        pointTypeDelegate->addItem("Без точки", "none");
+        settingsTable->setItemDelegateForColumn(3, pointTypeDelegate);
+    }
+    else if (plotType == "Гистограмма") {
+        // Столбец 1: Интервал
+        ComboItemDelegate* intervalDelegate = new ComboItemDelegate(this);
+        intervalDelegate->addItem("Автоматически", "auto");
+        intervalDelegate->addItem("10", "10");
+        intervalDelegate->addItem("20", "20");
+        intervalDelegate->addItem("50", "50");
+        intervalDelegate->addItem("100", "100");
+        settingsTable->setItemDelegateForColumn(1, intervalDelegate);
+    }
+    else if (plotType == "Скаттерплот") {
+        // Столбец 2: Тип точки
+        ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
+        pointTypeDelegate->addItem("Круг", "circle");
+        pointTypeDelegate->addItem("Квадрат", "square");
+        pointTypeDelegate->addItem("Крестик", "cross");
+        pointTypeDelegate->addItem("Плюс", "plus");
+        pointTypeDelegate->addItem("Ромб", "diamond");
+        settingsTable->setItemDelegateForColumn(2, pointTypeDelegate);
+    }
+}
+
+void MainWindow::setupDefaultPlotSettingsDelegates()
+{
+    // График,  столбец 1: Тип линии
+    ComboItemDelegate* lineTypeDelegate = new ComboItemDelegate(this);
+    lineTypeDelegate->addItem("Сплошная", "line");
+    lineTypeDelegate->addItem("Пунктирная", "none");
+    lineTypeDelegate->addItem("Ступенчатая", "step");
+    ui->tableWidget_2->setItemDelegateForColumn(1, lineTypeDelegate);
+    
+    // График, столбец 3: Тип точки
+    ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
+    pointTypeDelegate->addItem("Круг", "circle");
+    pointTypeDelegate->addItem("Квадрат", "square");
+    pointTypeDelegate->addItem("Крестик", "cross");
+    pointTypeDelegate->addItem("Плюс", "plus");
+    pointTypeDelegate->addItem("Ромб", "diamond");
+    pointTypeDelegate->addItem("Без точки", "none");
+    ui->tableWidget_2->setItemDelegateForColumn(3, pointTypeDelegate);
+    
+    // Гистограмма, столбец 1: Интервал
+    ComboItemDelegate* intervalDelegate = new ComboItemDelegate(this);
+    intervalDelegate->addItem("Автоматически", "auto");
+    intervalDelegate->addItem("10", "10");
+    intervalDelegate->addItem("20", "20");
+    intervalDelegate->addItem("50", "50");
+    intervalDelegate->addItem("100", "100");
+    ui->tableWidget_5->setItemDelegateForColumn(1, intervalDelegate);
+    
+    // Скаттерплот, столбец 2: Тип точки
+    ComboItemDelegate* scatterPointTypeDelegate = new ComboItemDelegate(this);
+    scatterPointTypeDelegate->addItem("Круг", "circle");
+    scatterPointTypeDelegate->addItem("Квадрат", "square");
+    scatterPointTypeDelegate->addItem("Крестик", "cross");
+    scatterPointTypeDelegate->addItem("Плюс", "plus");
+    scatterPointTypeDelegate->addItem("Ромб", "diamond");
+    ui->tableWidget_4->setItemDelegateForColumn(2, scatterPointTypeDelegate);
 }
