@@ -1,3 +1,6 @@
 [submodule "libs/qcustomplot"]
 	path = libs/qcustomplot
 	url = https://github.com/legerch/QCustomPlot-library.git
+[submodule "libs/json"]
+	path = libs/json
+	url = https://github.com/nlohmann/json.git
