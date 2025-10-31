@@ -1,5 +1,7 @@
+#include <windows.h>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "parser.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
 #include <QInputDialog>
@@ -14,6 +16,8 @@
 #include <QLabel>
 #include <QComboBox>
 #include <algorithm>
+#include <QFileDialog>
+#include <parser.h>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -613,3 +617,49 @@ void MainWindow::addPlotSettingsRow(const QString& columnName)
     ui->tableWidget_4->setItem(rowIndex, 1, new QTableWidgetItem(""));
     ui->tableWidget_4->setItem(rowIndex, 2, new QTableWidgetItem(""));
 }
+
+void MainWindow::on_import_CSV_triggered()
+{
+    //Creating dialog window
+    QFileDialog dialog(this);
+
+    //Setting design of dialog window
+    dialog.setAcceptMode(QFileDialog::AcceptOpen);
+    dialog.setViewMode(QFileDialog::Detail);
+    dialog.setFileMode(QFileDialog::ExistingFiles);
+    dialog.setNameFilter("*.json *.csv");
+
+    //Extracting paths of files
+    if(dialog.exec() == QFileDialog::Accepted)
+    {
+        QString csvFile, jsonFile;
+
+        QStringList files = dialog.selectedFiles();
+        if(files.size() == 2)
+        {
+            for(const QString &filePath : files)
+            {
+                if(filePath.endsWith(".csv", Qt::CaseInsensitive))
+                {
+                    csvFile = filePath;
+                }
+                else
+                {
+                    jsonFile = filePath;
+                }
+            }
+
+            //Parsing files
+            parser(csvFile.toStdString(), jsonFile.toStdString());
+        }
+        else
+        {
+            QMessageBox::critical(this,
+                "Ошибка выбора файлов",
+                "Пожалуйста, выберите ровно два файла: один CSV и один JSON");
+
+            return;
+        }
+    }
+}
+
