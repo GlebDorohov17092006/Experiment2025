@@ -31,6 +31,8 @@ private slots:
     void onColumnHeaderDoubleClicked(int col);
     void openReportDialog();
     void onInstrumentCellDoubleClicked(int row, int column);
+    void removeGraph(int index = -1);
+    void updateInstrumentTexts();
 
     void on_import_CSV_triggered();
 
@@ -40,7 +42,6 @@ private:
     QString getColumnName(int columnIndex);
     void syncVariableInstrumentsTable();
     void syncPlotSettingsTables();
-    void updateInstrumentTexts();
     QString getInstrumentDisplayText(int instrumentIndex);
     void addPlotSettingsRow(const QString& columnName);
 <<<<<<< HEAD
