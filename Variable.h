@@ -28,4 +28,5 @@ public:
     void set_error_instrument(size_t index = 0, double error = 0.0);
     void add_instrument(Instrument *instrument);
     void add_measurement(double measurement);
+    void remove_measurement(size_t index);
 };
