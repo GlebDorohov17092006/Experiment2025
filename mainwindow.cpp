@@ -36,40 +36,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->instrumentsTable->setColumnWidth(1, 300);
     ui->instrumentsTable->setColumnWidth(2, 100);
     
-    connect(ui->addColumnButton, &QPushButton::clicked, this, &MainWindow::addColumn);
-    connect(ui->removeColumnButton, &QPushButton::clicked, this, &MainWindow::removeColumn);
-    connect(ui->addRowButton, &QPushButton::clicked, this, &MainWindow::addRow);
-    connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
-    
-    connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
-    connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
-    
-    // Автоматическая перерисовка графика при изменении данных в таблице
-    connect(ui->tableWidget, &QTableWidget::cellChanged, this, &MainWindow::drawSimpleGraph);
-    
-
-    connect(ui->action_3, &QAction::triggered, this, &MainWindow::openReportDialog);
-    
-
-    connect(ui->action_6, &QAction::triggered, this, [this]() { addDynamicPlotTab("График"); });
-    connect(ui->action_7, &QAction::triggered, this, [this]() { addDynamicPlotTab("Гистограмма"); });
-    connect(ui->action_8, &QAction::triggered, this, [this]() { addDynamicPlotTab("Скаттерплот"); });
-    connect(ui->action_5, &QAction::triggered, this, [this]() { removeGraph(); });
-    
-    // Синхронизация вкладок tabPlotSettings и tabPlot
-    connect(ui->tabPlotSettings, &QTabWidget::currentChanged, this, &MainWindow::onPlotSettingsTabChanged);
-    connect(ui->tabPlot, &QTabWidget::currentChanged, this, &MainWindow::onPlotTabChanged);
-    
-    // Обработчик закрытия вкладок через крестик
-    connect(ui->tabPlot, &QTabWidget::tabCloseRequested, this, &MainWindow::removeGraph);
-    
-    connect(ui->lineEdit_xAxisLabel, &QLineEdit::textChanged, this, &MainWindow::drawSimpleGraph);
-    connect(ui->lineEdit_yAxisLabel, &QLineEdit::textChanged, this, &MainWindow::drawSimpleGraph);
-    
-
-    connect(ui->variableInstrumentsTable, &QTableWidget::cellDoubleClicked, this, &MainWindow::onInstrumentCellDoubleClicked);
-    
-    connect(ui->instrumentsTable, &QTableWidget::cellChanged, this, &MainWindow::updateInstrumentTexts);
+    connect(ui->add_graph, &QAction::triggered, this, [this]() { addDynamicPlotTab("График"); });
+    connect(ui->add_histogram, &QAction::triggered, this, [this]() { addDynamicPlotTab("Гистограмма"); });
+    connect(ui->add_scatterplot, &QAction::triggered, this, [this]() { addDynamicPlotTab("Скаттерплот"); });
+    connect(ui->delete_plot, &QAction::triggered, this, [this]() { removeGraph(); });
     
 
     ui->variableInstrumentsTable->horizontalHeader()->setDefaultSectionSize(200);

@@ -34,6 +34,7 @@ private slots:
     void openReportDialog();
     void onInstrumentCellDoubleClicked(int row, int column);
     void removeGraph(int index = -1);
+    void updateInstrumentTexts();
 
 private:
     void setColumnTag(int columnIndex, const QString& tag);
@@ -41,7 +42,6 @@ private:
     QString getColumnName(int columnIndex);
     void syncVariableInstrumentsTable();
     void syncPlotSettingsTables();
-    void updateInstrumentTexts();
     QString getInstrumentDisplayText(int instrumentIndex);
     void addPlotSettingsRow(const QString& columnName);
     void addDynamicPlotTab(const QString& plotType);
