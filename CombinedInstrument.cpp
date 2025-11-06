@@ -20,7 +20,7 @@ void CombinedInstrument::set_error(size_t index, double error)
 {
     if (index >= errors.size())
     {
-        errors.resize(index + 1, 0.0);
+        throw std::out_of_range("The index goes beyond the bounds of the index array");
     }
     errors[index] = error;
 }
