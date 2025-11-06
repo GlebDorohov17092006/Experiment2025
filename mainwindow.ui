@@ -722,45 +722,30 @@
     </property>
     <addaction name="import_CSV"/>
     <addaction name="action_CSV"/>
-    <addaction name="action_3"/>
+    <addaction name="create_report"/>
    </widget>
    <widget class="QMenu" name="menu">
     <property name="title">
      <string>График</string>
     </property>
-    <addaction name="action_4"/>
-    <addaction name="action_5"/>
+    <widget class="QMenu" name="menu_2">
+     <property name="title">
+      <string>Добавить</string>
+     </property>
+     <addaction name="add_graph"/>
+     <addaction name="add_histogram"/>
+     <addaction name="add_scatterplot"/>
+    </widget>
+    <addaction name="menu_2"/>
+    <addaction name="delete_plot"/>
    </widget>
    <addaction name="Menu"/>
    <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="action">
-   <property name="text">
-    <string>меню</string>
-   </property>
-  </action>
-  <action name="action_2">
-   <property name="text">
-    <string>Файл</string>
-   </property>
-  </action>
   <action name="import_CSV">
    <property name="text">
     <string>Импорт CSV</string>
-   </property>
-  </action>
-  <action name="export_CSV">
-   <property name="text">
-    <string>Экспорт CSV</string>
-   </property>
-  </action>
-  <action name="action_ODF">
-   <property name="text">
-    <string>Создать отчет</string>
-   </property>
-   <property name="toolTip">
-    <string>Экспорт в ODF</string>
    </property>
   </action>
   <action name="action_CSV">
@@ -768,19 +753,29 @@
     <string>Экспорт CSV</string>
    </property>
   </action>
-  <action name="action_3">
+  <action name="create_report">
    <property name="text">
     <string>Создать отчет</string>
    </property>
   </action>
-  <action name="action_4">
+  <action name="action_5">
    <property name="text">
     <string>Добавить</string>
    </property>
   </action>
-  <action name="action_5">
+  <action name="action_6">
    <property name="text">
     <string>Удалить</string>
+   </property>
+  </action>
+  <action name="action_7">
+   <property name="text">
+    <string>Гистограмма</string>
+   </property>
+  </action>
+  <action name="action_8">
+   <property name="text">
+    <string>Скаттерплот</string>
    </property>
   </action>
  </widget>
@@ -795,5 +790,261 @@
  <resources>
   <include location="resources.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>addColumnButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>addColumn()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>removeColumnButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>removeColumn()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>addRowButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>addRow()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>removeRowButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>removeRow()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>addInstrument()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_2</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>removeInstrument()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>tableWidget</sender>
+   <signal>cellChanged(int,int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>drawSimpleGraph()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>create_report</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>openReportDialog()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>tabPlotSettings</sender>
+   <signal>currentChanged(int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onPlotSettingsTabChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>tabPlot</sender>
+   <signal>currentChanged(int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onPlotTabChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>tabPlot</sender>
+   <signal>tabCloseRequested(int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>removeGraph(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>lineEdit_xAxisLabel</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>drawSimpleGraph()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>lineEdit_yAxisLabel</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>drawSimpleGraph()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>variableInstrumentsTable</sender>
+   <signal>cellDoubleClicked(int,int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onInstrumentCellDoubleClicked(int,int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>instrumentsTable</sender>
+   <signal>cellChanged(int,int)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>updateInstrumentTexts()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>addColumn()</slot>
+  <slot>removeColumn()</slot>
+  <slot>addRow()</slot>
+  <slot>removeRow()</slot>
+  <slot>addInstrument()</slot>
+  <slot>removeInstrument()</slot>
+  <slot>drawSimpleGraph()</slot>
+  <slot>openReportDialog()</slot>
+  <slot>onPlotSettingsTabChanged(int)</slot>
+  <slot>onPlotTabChanged(int)</slot>
+  <slot>removeGraph(int)</slot>
+  <slot>onInstrumentCellDoubleClicked(int,int)</slot>
+  <slot>updateInstrumentTexts()</slot>
+ </slots>
 </ui>

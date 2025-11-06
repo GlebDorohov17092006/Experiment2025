@@ -39,35 +39,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->instrumentsTable->setColumnWidth(1, 300);
     ui->instrumentsTable->setColumnWidth(2, 100);
     
-    connect(ui->addColumnButton, &QPushButton::clicked, this, &MainWindow::addColumn);
-    connect(ui->removeColumnButton, &QPushButton::clicked, this, &MainWindow::removeColumn);
-    connect(ui->addRowButton, &QPushButton::clicked, this, &MainWindow::addRow);
-    connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
+    connect(ui->add_graph, &QAction::triggered, this, [this]() { addDynamicPlotTab("График"); });
+    connect(ui->add_histogram, &QAction::triggered, this, [this]() { addDynamicPlotTab("Гистограмма"); });
+    connect(ui->add_scatterplot, &QAction::triggered, this, [this]() { addDynamicPlotTab("Скаттерплот"); });
+    connect(ui->delete_plot, &QAction::triggered, this, [this]() { removeGraph(); });
     
-    connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
-    connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
-    
-    // Автоматическая перерисовка графика при изменении данных в таблице
-    connect(ui->tableWidget, &QTableWidget::cellChanged, this, &MainWindow::drawSimpleGraph);
-    
-    // Подключаем пункт меню "Создать отчет"
-    connect(ui->action_3, &QAction::triggered, this, &MainWindow::openReportDialog);
-    
-    // Синхронизация вкладок tabPlotSettings и tabPlot
-    connect(ui->tabPlotSettings, &QTabWidget::currentChanged, this, &MainWindow::onPlotSettingsTabChanged);
-    connect(ui->tabPlot, &QTabWidget::currentChanged, this, &MainWindow::onPlotTabChanged);
-    
-    // Подключаем обновление названий осей при изменении полей
-    connect(ui->lineEdit_xAxisLabel, &QLineEdit::textChanged, this, &MainWindow::drawSimpleGraph);
-    connect(ui->lineEdit_yAxisLabel, &QLineEdit::textChanged, this, &MainWindow::drawSimpleGraph);
-    
-    // Обработчик двойного клика для выбора инструмента
-    connect(ui->variableInstrumentsTable, &QTableWidget::cellDoubleClicked, this, &MainWindow::onInstrumentCellDoubleClicked);
-    
-    // Обновляем тексты инструментов при изменении таблицы инструментов
-    connect(ui->instrumentsTable, &QTableWidget::cellChanged, this, &MainWindow::updateInstrumentTexts);
-    
-    // Настройка таблицы инструментов для переменных
+
     ui->variableInstrumentsTable->horizontalHeader()->setDefaultSectionSize(200);
     
     // Синхронизируем таблицу инструментов
