@@ -98,3 +98,12 @@ void Variable::add_instrument(Instrument *instrument)
 {
     this->instrument = instrument;
 }
+
+void Variable::remove_measurement(size_t index)
+{
+    if (index >= measurements.size())
+    {
+        throw std::out_of_range("The index goes beyond the bounds of the measurements array");
+    }
+    measurements.erase(measurements.begin() + static_cast<std::ptrdiff_t>(index));
+}
