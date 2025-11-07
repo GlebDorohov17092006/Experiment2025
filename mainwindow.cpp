@@ -7,8 +7,17 @@
 #include "qcustomplot.h"
 #include "basesettingswidget.h"
 #include "Experiment.h"
-#include "parser.h"
+#include "TableModel.h"
+#include "InstrumentsModel.h"
+#include "Variable.h"
+#include "AbsoluteInstrument.h"
+#include "RelativeInstrument.h"
+#include "CombinedInstrument.h"
 
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QTableView>
+#include <QVBoxLayout>
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -20,8 +29,6 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QGridLayout>
-#include <QVBoxLayout>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QFont>
 #include <QTabBar>
@@ -31,11 +38,35 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , m_tableModel(new TableModel(this))
+    , m_instrumentsModel(new InstrumentsModel(this))
+    , m_experiment(nullptr)
 {
     ui->setupUi(this);
 
-    connect(ui->tableWidget->horizontalHeader(), &QHeaderView::sectionDoubleClicked,
-            this, &MainWindow::onColumnHeaderDoubleClicked);
+    // Привязываем модели
+    m_tableModel->setExperiment(m_experiment);
+    m_instrumentsModel->setInstruments(&m_instruments);
+
+    // ЗАМЕНЯЕМ tableWidget на TableView
+    QTableView* measurementsView = ui->tableWidget;
+    measurementsView->setModel(m_tableModel);
+    measurementsView->setSelectionBehavior(QAbstractItemView::SelectItems);
+    measurementsView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    measurementsView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+    // ЗАМЕНЯЕМ instrumentsTable на TableView
+    QTableView* instrumentsView = ui->instrumentsTable;
+    instrumentsView->setModel(m_instrumentsModel);
+    instrumentsView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    instrumentsView->verticalHeader()->setVisible(false);
+
+    connect(ui->addColumnButton, &QPushButton::clicked, this, &MainWindow::addColumn);
+    connect(ui->removeColumnButton, &QPushButton::clicked, this, &MainWindow::removeColumn);
+    connect(ui->addRowButton, &QPushButton::clicked, this, &MainWindow::addRow);
+    connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
+    connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
+    connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
 
     ui->instrumentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     ui->instrumentsTable->setColumnWidth(0, 150);
@@ -53,7 +84,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->variableInstrumentsTable->horizontalHeader()->setDefaultSectionSize(200);
 
-    syncVariableInstrumentsTable();
+    //syncVariableInstrumentsTable();
 
     addDynamicPlotTab("График");
     addDynamicPlotTab("Гистограмма");
@@ -125,140 +156,6 @@ void MainWindow::addColumn()
 //        int columnCount = plotTab.settingsTable->columnCount();
 //        for (int j = 1; j < columnCount; ++j) {
 //            plotTab.settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
-//        }
-//    }
-}
-
-void MainWindow::removeColumn()
-{
-//    QItemSelectionModel* selectionModel = ui->tableWidget->selectionModel();
-//    if (selectionModel && selectionModel->hasSelection()) {
-//        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
-//        if (!selectedIndexes.isEmpty()) {
-//            QSet<int> fullySelectedColumns;
-//            int totalRows = ui->tableWidget->rowCount();
-//
-//            QMap<int, QSet<int>> columnRows;
-//            for (const QModelIndex& index : selectedIndexes) {
-//                columnRows[index.column()].insert(index.row());
-//            }
-//
-//            for (auto it = columnRows.begin(); it != columnRows.end(); ++it) {
-//                int col = it.key();
-//                const QSet<int>& rows = it.value();
-//
-//                if (rows.size() == totalRows) {
-//                    fullySelectedColumns.insert(col);
-//                }
-//            }
-//
-//            if (!fullySelectedColumns.isEmpty()) {
-//                QList<int> sortedColumns = fullySelectedColumns.values();
-//                std::sort(sortedColumns.begin(), sortedColumns.end(), std::greater<int>());
-//
-//                for (int col : sortedColumns) {
-//                    ui->tableWidget->removeColumn(col);
-//
-//                    // Удаляем столбец из таблицы инструментов для переменных
-//                    if (col < ui->variableInstrumentsTable->columnCount()) {
-//                        ui->variableInstrumentsTable->removeColumn(col);
-//                    }
-//
-//                    // Удаляем соответствующую строку из таблиц настроек динамически добавленных графиков
-//                    for (auto& plotTab : m_plotTabs) {
-//                        if (col < plotTab.settingsTable->rowCount()) {
-//                            plotTab.settingsTable->removeRow(col);
-//                        }
-//                    }
-//                }
-//                return;
-//            }
-//        }
-//    }
-}
-
-void MainWindow::addRow()
-{
-//    int currentRows = ui->tableWidget->rowCount();
-//    ui->tableWidget->insertRow(currentRows);
-}
-
-void MainWindow::removeRow()
-{
-//    QItemSelectionModel* selectionModel = ui->tableWidget->selectionModel();
-//    if (selectionModel && selectionModel->hasSelection()) {
-//        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
-//        if (!selectedIndexes.isEmpty()) {
-//            QSet<int> fullySelectedRows;
-//            int totalColumns = ui->tableWidget->columnCount();
-//
-//            QMap<int, QSet<int>> rowColumns;
-//            for (const QModelIndex& index : selectedIndexes) {
-//                rowColumns[index.row()].insert(index.column());
-//            }
-//
-//            for (auto it = rowColumns.begin(); it != rowColumns.end(); ++it) {
-//                int row = it.key();
-//                const QSet<int>& columns = it.value();
-//
-//                if (columns.size() == totalColumns) {
-//                    fullySelectedRows.insert(row);
-//                }
-//            }
-//
-//            if (!fullySelectedRows.isEmpty()) {
-//                QList<int> sortedRows = fullySelectedRows.values();
-//                std::sort(sortedRows.begin(), sortedRows.end(), std::greater<int>());
-//
-//                for (int row : sortedRows) {
-//                    ui->tableWidget->removeRow(row);
-//                }
-//                return;
-//            }
-//        }
-//    }
-}
-
-void MainWindow::addInstrument()
-{
-//    int currentRows = ui->instrumentsTable->rowCount();
-//    ui->instrumentsTable->insertRow(currentRows);
-}
-
-void MainWindow::removeInstrument()
-{
-//    QItemSelectionModel* selectionModel = ui->instrumentsTable->selectionModel();
-//    if (selectionModel && selectionModel->hasSelection()) {
-//        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
-//        if (!selectedIndexes.isEmpty()) {
-//            QSet<int> fullySelectedRows;
-//            int totalColumns = ui->instrumentsTable->columnCount();
-//
-//            QMap<int, QSet<int>> rowColumns;
-//            for (const QModelIndex& index : selectedIndexes) {
-//                rowColumns[index.row()].insert(index.column());
-//            }
-//
-//            for (auto it = rowColumns.begin(); it != rowColumns.end(); ++it) {
-//                int row = it.key();
-//                const QSet<int>& columns = it.value();
-//
-//                if (columns.size() == totalColumns) {
-//                    fullySelectedRows.insert(row);
-//                }
-//            }
-//
-//            if (!fullySelectedRows.isEmpty()) {
-//                QList<int> sortedRows = fullySelectedRows.values();
-//                std::sort(sortedRows.begin(), sortedRows.end(), std::greater<int>());
-//
-//                for (int row : sortedRows) {
-//                    ui->instrumentsTable->removeRow(row);
-//                }
-//
-//                // Обновляем тексты инструментов
-//                updateInstrumentTexts();
-//            }
 //        }
 //    }
 }
@@ -348,7 +245,7 @@ void MainWindow::openReportDialog()
     dialog.exec();
 }
 
-void MainWindow::syncVariableInstrumentsTable()
+void MainWindow::updateVariableInstrumentsTable()
 {
 //    int mainTableColumns = ui->tableWidget->columnCount();
 //    int instrumentTableColumns = ui->variableInstrumentsTable->columnCount();
@@ -409,27 +306,6 @@ void MainWindow::syncPlotSettingsTables()
 //            }
 //        }
 //    }
-}
-
-QString MainWindow::getInstrumentDisplayText(int instrumentIndex)
-{
-//    if (instrumentIndex < 0 || instrumentIndex >= ui->instrumentsTable->rowCount()) {
-//        return "-";
-//    }
-//
-//    QTableWidgetItem* nameItem = ui->instrumentsTable->item(instrumentIndex, 0);
-//    QTableWidgetItem* errorItem = ui->instrumentsTable->item(instrumentIndex, 2);
-//
-//    if (!nameItem || nameItem->text().isEmpty()) {
-//        return "-";
-//    }
-//
-//    QString displayText = nameItem->text();
-//    if (errorItem && !errorItem->text().isEmpty()) {
-//        displayText += QString(" (±%1)").arg(errorItem->text());
-//    }
-//
-//    return displayText;
 }
 
 void MainWindow::updateInstrumentTexts()
@@ -601,6 +477,96 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
 //    m_plotTabs.append(plotTab);
 }
 
+void MainWindow::removeColumn()
+{
+    if (m_experiment->get_variables_count() == 0) {
+        QMessageBox::information(this, "Информация", "Нет переменных для удаления");
+        return;
+    }
+
+    m_experiment->remove_variable(m_experiment->get_variables_count() - 1);
+    m_tableModel->refreshData();
+    updateVariableInstrumentsTable();
+}
+
+void MainWindow::addRow()
+{
+    if (m_experiment->get_variables_count() == 0) {
+        QMessageBox::information(this, "Информация", "Сначала добавьте переменные");
+        return;
+    }
+
+    for (size_t i = 0; i < m_experiment->get_variables_count(); ++i) {
+        auto var = m_experiment->get_variable(i);
+        var->add_measurement(0.0);
+    }
+    m_tableModel->refreshData();
+}
+
+void MainWindow::removeRow()
+{
+    if (m_experiment->get_variables_count() == 0) {
+        QMessageBox::information(this, "Информация", "Нет данных для удаления");
+        return;
+    }
+
+    for (size_t i = 0; i < m_experiment->get_variables_count(); ++i) {
+        auto var = m_experiment->get_variable(i);
+        if (var->get_measurements_count() > 0) {
+            var->remove_measurement(var->get_measurements_count() - 1);
+        }
+    }
+    m_tableModel->refreshData();
+}
+
+void MainWindow::addInstrument()
+{
+    bool ok;
+    QString name = QInputDialog::getText(this, "Название инструмента",
+                                        "Введите название инструмента:",
+                                        QLineEdit::Normal, "Новый прибор", &ok);
+    if (!ok || name.isEmpty()) return;
+
+    QStringList types = {"Абсолютная", "Относительная", "Комбинированная"};
+    QString type = QInputDialog::getItem(this, "Тип инструмента",
+                                        "Выберите тип погрешности:",
+                                        types, 0, false, &ok);
+    if (!ok) return;
+
+    double error = QInputDialog::getDouble(this, "Погрешность",
+                                          "Введите значение погрешности:",
+                                          0.1, 0, 100, 3, &ok);
+    if (!ok) return;
+
+    std::shared_ptr<Instrument> instrument;
+
+    if (type == "Абсолютная") {
+        instrument = std::make_shared<AbsoluteInstrument>(name.toStdString(), error);
+    } else if (type == "Относительная") {
+        instrument = std::make_shared<RelativeInstrument>(name.toStdString(), error);
+    } else {
+        instrument = std::make_shared<CombinedInstrument>(name.toStdString());
+        auto combPtr = std::dynamic_pointer_cast<CombinedInstrument>(instrument);
+        if (combPtr) {
+            combPtr->add_error(error);
+        }
+    }
+
+    m_instruments.push_back(instrument);
+    m_instrumentsModel->refreshData();
+}
+
+void MainWindow::removeInstrument()
+{
+    if (m_instruments.empty()) {
+        QMessageBox::information(this, "Информация", "Нет приборов для удаления");
+        return;
+    }
+
+    m_instruments.pop_back();
+    m_instrumentsModel->refreshData();
+}
+
 void MainWindow::removeGraph(int index)
 {
 //    int currentIndex = (index == -1) ? ui->tabPlot->currentIndex() : index;
@@ -683,4 +649,3 @@ void MainWindow::on_import_CSV_triggered()
         }
     }
 }
-

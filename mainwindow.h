@@ -3,6 +3,13 @@
 
 #include <QMainWindow>
 #include <QMap>
+#include <memory>
+
+class TableModel;
+class InstrumentsModel;
+class Experiment;
+class Instrument;
+class Variable;
 class QCustomPlot;
 class QTableWidget;
 
@@ -56,6 +63,14 @@ private:
 
 private:
     Ui::MainWindow *ui;
+    TableModel* m_tableModel;
+    InstrumentsModel* m_instrumentsModel;
+    std::vector<std::shared_ptr<Instrument>> m_instruments;
+    Experiment* m_experiment;
+
+    // Добавляем объявления недостающих методов
+    void createTestData();
+    void updateVariableInstrumentsTable();
     QMap<int, QString> m_columnTags; // Хранилище тегов столбцов
     QList<PlotTab> m_plotTabs; // Список динамически добавленных графиков
 };
