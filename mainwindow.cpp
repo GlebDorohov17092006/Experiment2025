@@ -8,6 +8,7 @@
 #include <QInputDialog>
 =======
 #include "ComboItemDelegate.h"
+#include "ColorDialogItemDelegate.h"
 #include "basesettingswidget.h"
 #include <QTableWidgetItem>
 #include <QHeaderView>
@@ -738,6 +739,10 @@ void MainWindow::setupPlotSettingsDelegates(QTableWidget* settingsTable, const Q
         pointTypeDelegate->addItem("Ромб", "diamond");
         pointTypeDelegate->addItem("Без точки", "none");
         settingsTable->setItemDelegateForColumn(3, pointTypeDelegate);
+        
+        // Столбец 5: Цвет
+        ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(this);
+        settingsTable->setItemDelegateForColumn(5, colorDelegate);
     }
     else if (plotType == "Гистограмма") {
         // Столбец 1: Интервал
@@ -748,6 +753,10 @@ void MainWindow::setupPlotSettingsDelegates(QTableWidget* settingsTable, const Q
         intervalDelegate->addItem("50", "50");
         intervalDelegate->addItem("100", "100");
         settingsTable->setItemDelegateForColumn(1, intervalDelegate);
+        
+        // Столбец 2: Цвет
+        ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(this);
+        settingsTable->setItemDelegateForColumn(2, colorDelegate);
     }
     else if (plotType == "Скаттерплот") {
         // Столбец 2: Тип точки
@@ -758,6 +767,10 @@ void MainWindow::setupPlotSettingsDelegates(QTableWidget* settingsTable, const Q
         pointTypeDelegate->addItem("Плюс", "plus");
         pointTypeDelegate->addItem("Ромб", "diamond");
         settingsTable->setItemDelegateForColumn(2, pointTypeDelegate);
+        
+        // Столбец 3: Цвет
+        ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(this);
+        settingsTable->setItemDelegateForColumn(3, colorDelegate);
     }
 }
 
@@ -780,6 +793,10 @@ void MainWindow::setupDefaultPlotSettingsDelegates()
     pointTypeDelegate->addItem("Без точки", "none");
     ui->tableWidget_2->setItemDelegateForColumn(3, pointTypeDelegate);
     
+    // График, столбец 5: Цвет
+    ColorDialogItemDelegate* plotColorDelegate = new ColorDialogItemDelegate(this);
+    ui->tableWidget_2->setItemDelegateForColumn(5, plotColorDelegate);
+    
     // Гистограмма, столбец 1: Интервал
     ComboItemDelegate* intervalDelegate = new ComboItemDelegate(this);
     intervalDelegate->addItem("Автоматически", "auto");
@@ -789,6 +806,10 @@ void MainWindow::setupDefaultPlotSettingsDelegates()
     intervalDelegate->addItem("100", "100");
     ui->tableWidget_5->setItemDelegateForColumn(1, intervalDelegate);
     
+    // Гистограмма, столбец 2: Цвет
+    ColorDialogItemDelegate* histogramColorDelegate = new ColorDialogItemDelegate(this);
+    ui->tableWidget_5->setItemDelegateForColumn(2, histogramColorDelegate);
+    
     // Скаттерплот, столбец 2: Тип точки
     ComboItemDelegate* scatterPointTypeDelegate = new ComboItemDelegate(this);
     scatterPointTypeDelegate->addItem("Круг", "circle");
@@ -797,5 +818,9 @@ void MainWindow::setupDefaultPlotSettingsDelegates()
     scatterPointTypeDelegate->addItem("Плюс", "plus");
     scatterPointTypeDelegate->addItem("Ромб", "diamond");
     ui->tableWidget_4->setItemDelegateForColumn(2, scatterPointTypeDelegate);
+    
+    // Скаттерплот, столбец 3: Цвет
+    ColorDialogItemDelegate* scatterColorDelegate = new ColorDialogItemDelegate(this);
+    ui->tableWidget_4->setItemDelegateForColumn(3, scatterColorDelegate);
 }
 >>>>>>> 08b40e3 (Used ItemDelegate in graph settings)
