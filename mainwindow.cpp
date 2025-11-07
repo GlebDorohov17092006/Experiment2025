@@ -3,6 +3,7 @@
 #include "reportdialog.h"
 #include "qcustomplot.h"
 #include "ComboItemDelegate.h"
+#include "basesettingswidget.h"
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -676,52 +677,24 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     // Создаем вкладку в tabPlot
     int plotTabIndex = ui->tabPlot->addTab(plotWidget, tabName);
     
-    QWidget* settingsWidget = new QWidget();
-    QVBoxLayout* settingsLayout = new QVBoxLayout(settingsWidget);
-    
-    QFormLayout* formLayout = new QFormLayout();
-    QLabel* labelX = new QLabel("Название оси X:", settingsWidget);
-    QLineEdit* lineEditX = new QLineEdit(settingsWidget);
-    lineEditX->setMaximumWidth(300);
-    formLayout->addRow(labelX, lineEditX);
-    
-    QLabel* labelY = new QLabel("Название оси Y:", settingsWidget);
-    QLineEdit* lineEditY = new QLineEdit(settingsWidget);
-    lineEditY->setMaximumWidth(300);
-    formLayout->addRow(labelY, lineEditY);
-    
-    settingsLayout->addLayout(formLayout);
-    
-    // Создаем таблицу настроек
-    QTableWidget* settingsTable = new QTableWidget(settingsWidget);
-    settingsTable->horizontalHeader()->setStretchLastSection(true);
-    settingsTable->verticalHeader()->setVisible(true);
-    
-    QStringList headers;
-    int tableColumnCount = 4;
-    
-    if (plotType == "График") {
-        headers << "Отрисовка" << "Тип линийи" << "Ширина" << "Тип точки" << "Размер точки" << "Цвет";
-        tableColumnCount = 6;
-    } else if (plotType == "Гистограмма") {
-        headers << "Отрисовка" << "Интервал" << "Цвет";
-        tableColumnCount = 3;
-    } else if (plotType == "Скаттерплот") {
-        headers << "Отрисовка" << "Размер точки" << "Тип точки" << "Цвет";
-        tableColumnCount = 4;
+    // Создаем соответствующий виджет настроек
+    BaseSettingsWidget* settingsWidget = BaseSettingsWidget::create(plotType);
+    if (!settingsWidget) {
+        return;
     }
     
-    settingsTable->setColumnCount(tableColumnCount);
-    
-    QFont headerFont = settingsTable->horizontalHeader()->font();
-    headerFont.setBold(true);
-    settingsTable->horizontalHeader()->setFont(headerFont);
-    settingsTable->setHorizontalHeaderLabels(headers);
+    QTableWidget* settingsTable = settingsWidget->settingsTable();
+    if (!settingsTable) {
+        delete settingsWidget;
+        return;
+    }
     
     // Настраиваем делегаты для редактирования ячеек
     setupPlotSettingsDelegates(settingsTable, plotType);
     
     int columnCount = ui->tableWidget->columnCount();
+    int tableColumnCount = settingsTable->columnCount();
+    
     for (int i = 0; i < columnCount; ++i) {
         QString columnName = getColumnName(i);
         int rowIndex = settingsTable->rowCount();
@@ -736,8 +709,6 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
             settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
         }
     }
-    
-    settingsLayout->addWidget(settingsTable);
     
     int settingsTabIndex = ui->tabPlotSettings->addTab(settingsWidget, tabName);
     
