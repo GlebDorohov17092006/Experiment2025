@@ -25,9 +25,9 @@ private slots:
     void removeRow();
     void addInstrument();
     void removeInstrument();
-    void drawSimpleGraph();
     void onPlotSettingsTabChanged(int index);
     void onPlotTabChanged(int index);
+    void onPlotTabMoved(int from, int to);
     void onColumnHeaderDoubleClicked(int col);
     void openReportDialog();
     void onInstrumentCellDoubleClicked(int row, int column);
@@ -43,12 +43,8 @@ private:
     void syncVariableInstrumentsTable();
     void syncPlotSettingsTables();
     QString getInstrumentDisplayText(int instrumentIndex);
-    void addPlotSettingsRow(const QString& columnName);
-<<<<<<< HEAD
-=======
     void addDynamicPlotTab(const QString& plotType);
     void setupPlotSettingsDelegates(QTableWidget* settingsTable, const QString& plotType);
-    void setupDefaultPlotSettingsDelegates();
     struct PlotTab {
         QString name;
         QString type;
