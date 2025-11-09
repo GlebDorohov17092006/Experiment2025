@@ -1,7 +1,8 @@
 #include "scattersettingswidget.h"
 #include "./ui_scattersettingswidget.h"
+#include "ComboItemDelegate.h"
+#include "ColorDialogItemDelegate.h"
 #include <QTableWidget>
-#include <QLineEdit>
 
 ScatterSettingsWidget::ScatterSettingsWidget(QWidget *parent)
     : BaseSettingsWidget(parent)
@@ -20,13 +21,19 @@ QTableWidget* ScatterSettingsWidget::settingsTable() const
     return ui->settingsTable;
 }
 
-QLineEdit* ScatterSettingsWidget::xAxisLabel() const
+void ScatterSettingsWidget::setupDelegates(QWidget* parent)
 {
-    return ui->lineEdit_xAxisLabel;
-}
-
-QLineEdit* ScatterSettingsWidget::yAxisLabel() const
-{
-    return ui->lineEdit_yAxisLabel;
+    // Столбец типа точки
+    ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(parent);
+    pointTypeDelegate->addItem("Круг", "circle");
+    pointTypeDelegate->addItem("Квадрат", "square");
+    pointTypeDelegate->addItem("Крестик", "cross");
+    pointTypeDelegate->addItem("Плюс", "plus");
+    pointTypeDelegate->addItem("Ромб", "diamond");
+    ui->settingsTable->setItemDelegateForColumn(ColumnPointType, pointTypeDelegate);
+    
+    // Столбец цвета
+    ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(parent);
+    ui->settingsTable->setItemDelegateForColumn(ColumnColor, colorDelegate);
 }
 

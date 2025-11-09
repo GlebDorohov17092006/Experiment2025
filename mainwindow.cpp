@@ -4,11 +4,6 @@
 #include "parser.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
-<<<<<<< HEAD
-#include <QInputDialog>
-=======
-#include "ComboItemDelegate.h"
-#include "ColorDialogItemDelegate.h"
 #include "basesettingswidget.h"
 #include <QTableWidgetItem>
 #include <QHeaderView>
@@ -183,7 +178,7 @@ void MainWindow::addColumn()
         
         QTableWidgetItem* checkItem = new QTableWidgetItem();
         checkItem->setCheckState(Qt::Checked);
-        plotTab.settingsTable->setItem(rowIndex, 0, checkItem);
+        plotTab.settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
         
         // Добавляем остальные колонки
         int columnCount = plotTab.settingsTable->columnCount();
@@ -504,7 +499,7 @@ void MainWindow::syncPlotSettingsTables()
             
             QTableWidgetItem* checkItem = new QTableWidgetItem();
             checkItem->setCheckState(Qt::Checked);
-            plotTab.settingsTable->setItem(rowIndex, 0, checkItem);
+            plotTab.settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
             
             // Добавляем остальные колонки
             int columnCount = plotTab.settingsTable->columnCount();
@@ -680,7 +675,7 @@ void MainWindow::on_import_CSV_triggered()
     }
     
     // Настраиваем делегаты для редактирования ячеек
-    setupPlotSettingsDelegates(settingsTable, plotType);
+    settingsWidget->setupDelegates(this);
     
     int columnCount = ui->tableWidget->columnCount();
     int tableColumnCount = settingsTable->columnCount();
@@ -693,7 +688,7 @@ void MainWindow::on_import_CSV_triggered()
         
         QTableWidgetItem* checkItem = new QTableWidgetItem();
         checkItem->setCheckState(Qt::Checked);
-        settingsTable->setItem(rowIndex, 0, checkItem);
+        settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
         
         for (int j = 1; j < tableColumnCount; ++j) {
             settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
@@ -752,8 +747,6 @@ void MainWindow::removeGraph(int index)
     }
 }
 
-<<<<<<< HEAD
-=======
 void MainWindow::setupPlotSettingsDelegates(QTableWidget* settingsTable, const QString& plotType)
 {
     if (plotType == "График") {

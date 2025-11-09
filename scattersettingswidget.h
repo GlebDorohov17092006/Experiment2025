@@ -5,7 +5,7 @@
 
 QT_BEGIN_NAMESPACE
 class QTableWidget;
-class QLineEdit;
+class QWidget;
 namespace Ui {
 class ScatterSettingsWidget;
 }
@@ -16,12 +16,19 @@ class ScatterSettingsWidget : public BaseSettingsWidget
     Q_OBJECT
 
 public:
+    enum ScatterSettingsColumn {
+        ColumnEnabled = 0,
+        ColumnPointSize = 1,
+        ColumnPointType = 2,
+        ColumnColor = 3,
+        ColumnCount = 4
+    };
+
     explicit ScatterSettingsWidget(QWidget *parent = nullptr);
     ~ScatterSettingsWidget();
 
-    QTableWidget* settingsTable() const;
-    QLineEdit* xAxisLabel() const;
-    QLineEdit* yAxisLabel() const;
+    QTableWidget* settingsTable() const override;
+    void setupDelegates(QWidget* parent) override;
 
 private:
     Ui::ScatterSettingsWidget *ui;
