@@ -32,6 +32,8 @@ private slots:
     void openReportDialog();
     void onInstrumentCellDoubleClicked(int row, int column);
 
+    void on_import_CSV_triggered();
+
 private:
     void setColumnTag(int columnIndex, const QString& tag);
     QString getColumnTag(int columnIndex);

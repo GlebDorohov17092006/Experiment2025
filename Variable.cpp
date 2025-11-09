@@ -4,9 +4,9 @@
 Variable::Variable(std::vector<double> measurements, const std::string &name_tables,
                    const std::string &name_calculated, Instrument *instrument)
     : measurements(measurements),
-      name_tables(name_tables),
-      name_calculated(name_calculated),
-      instrument(instrument)
+    name_tables(name_tables),
+    name_calculated(name_calculated),
+    instrument(instrument)
 {
 }
 

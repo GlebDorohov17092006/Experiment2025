@@ -9,10 +9,20 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Find architecture property for qcustomplot
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(PROJECT_ARCH_TARGET "amd64")    # x64
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)     
+    set(PROJECT_ARCH_TARGET "i386")     # x86
+else()
+    message(FATAL_ERROR "Unknown architecture, CMake will exit.")
+endif()
+
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/qcustomplot)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost-di/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/boost/spirit/include)
+
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport)
@@ -48,11 +58,14 @@ else()
 endif()
 
 add_subdirectory(libs/qcustomplot)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(libs/json)
 
 target_link_libraries(Experiment2025 PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::PrintSupport
     qcustomplot
+    nlohmann_json::nlohmann_json
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
