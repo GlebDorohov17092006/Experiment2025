@@ -1,5 +1,7 @@
+#include <windows.h>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "parser.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
 #include "basesettingswidget.h"
@@ -20,6 +22,8 @@
 #include <QFont>
 #include <QTabBar>
 #include <algorithm>
+#include <QFileDialog>
+#include <parser.h>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)

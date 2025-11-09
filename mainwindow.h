@@ -36,6 +36,8 @@ private slots:
     void removeGraph(int index = -1);
     void updateInstrumentTexts();
 
+    void on_import_CSV_triggered();
+
 private:
     void setColumnTag(int columnIndex, const QString& tag);
     QString getColumnTag(int columnIndex);
