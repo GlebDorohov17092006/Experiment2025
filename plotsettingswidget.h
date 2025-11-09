@@ -5,7 +5,7 @@
 
 QT_BEGIN_NAMESPACE
 class QTableWidget;
-class QLineEdit;
+class QWidget;
 namespace Ui {
 class PlotSettingsWidget;
 }
@@ -16,12 +16,21 @@ class PlotSettingsWidget : public BaseSettingsWidget
     Q_OBJECT
 
 public:
+    enum PlotSettingsColumn {
+        ColumnEnabled = 0,
+        ColumnLineType = 1,
+        ColumnWidth = 2,
+        ColumnPointType = 3,
+        ColumnPointSize = 4,
+        ColumnColor = 5,
+        ColumnCount = 6
+    };
+
     explicit PlotSettingsWidget(QWidget *parent = nullptr);
     ~PlotSettingsWidget();
 
-    QTableWidget* settingsTable() const;
-    QLineEdit* xAxisLabel() const;
-    QLineEdit* yAxisLabel() const;
+    QTableWidget* settingsTable() const override;
+    void setupDelegates(QWidget* parent) override;
 
 private:
     Ui::PlotSettingsWidget *ui;
