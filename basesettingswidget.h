@@ -5,7 +5,6 @@
 
 QT_BEGIN_NAMESPACE
 class QTableWidget;
-class QLineEdit;
 QT_END_NAMESPACE
 
 class BaseSettingsWidget : public QWidget
@@ -13,12 +12,15 @@ class BaseSettingsWidget : public QWidget
     Q_OBJECT
 
 public:
+    enum CommonColumn {
+        ColumnEnabled = 0
+    };
+
     explicit BaseSettingsWidget(QWidget *parent = nullptr) : QWidget(parent) {}
     virtual ~BaseSettingsWidget() = default;
 
     virtual QTableWidget* settingsTable() const = 0;
-    virtual QLineEdit* xAxisLabel() const = 0;
-    virtual QLineEdit* yAxisLabel() const = 0;
+    virtual void setupDelegates(QWidget* parent) = 0;
 
     static BaseSettingsWidget* create(const QString& plotType, QWidget* parent = nullptr);
 };

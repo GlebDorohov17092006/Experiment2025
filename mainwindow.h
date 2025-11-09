@@ -44,7 +44,6 @@ private:
     void syncPlotSettingsTables();
     QString getInstrumentDisplayText(int instrumentIndex);
     void addDynamicPlotTab(const QString& plotType);
-    void setupPlotSettingsDelegates(QTableWidget* settingsTable, const QString& plotType);
     struct PlotTab {
         QString name;
         QString type;

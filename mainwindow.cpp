@@ -2,8 +2,6 @@
 #include "./ui_mainwindow.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
-#include "ComboItemDelegate.h"
-#include "ColorDialogItemDelegate.h"
 #include "basesettingswidget.h"
 #include <QTableWidgetItem>
 #include <QHeaderView>
@@ -114,7 +112,7 @@ void MainWindow::addColumn()
         
         QTableWidgetItem* checkItem = new QTableWidgetItem();
         checkItem->setCheckState(Qt::Checked);
-        plotTab.settingsTable->setItem(rowIndex, 0, checkItem);
+        plotTab.settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
         
         // Добавляем остальные колонки
         int columnCount = plotTab.settingsTable->columnCount();
@@ -387,7 +385,7 @@ void MainWindow::syncPlotSettingsTables()
             
             QTableWidgetItem* checkItem = new QTableWidgetItem();
             checkItem->setCheckState(Qt::Checked);
-            plotTab.settingsTable->setItem(rowIndex, 0, checkItem);
+            plotTab.settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
             
             // Добавляем остальные колонки
             int columnCount = plotTab.settingsTable->columnCount();
@@ -564,7 +562,7 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     }
     
     // Настраиваем делегаты для редактирования ячеек
-    setupPlotSettingsDelegates(settingsTable, plotType);
+    settingsWidget->setupDelegates(this);
     
     int columnCount = ui->tableWidget->columnCount();
     int tableColumnCount = settingsTable->columnCount();
@@ -577,7 +575,7 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
         
         QTableWidgetItem* checkItem = new QTableWidgetItem();
         checkItem->setCheckState(Qt::Checked);
-        settingsTable->setItem(rowIndex, 0, checkItem);
+        settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
         
         for (int j = 1; j < tableColumnCount; ++j) {
             settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
@@ -632,57 +630,4 @@ void MainWindow::removeGraph(int index)
     }
 }
 
-void MainWindow::setupPlotSettingsDelegates(QTableWidget* settingsTable, const QString& plotType)
-{
-    if (plotType == "График") {
-        // Столбец 1: Тип линии
-        ComboItemDelegate* lineTypeDelegate = new ComboItemDelegate(this);
-        lineTypeDelegate->addItem("Сплошная", "line");
-        lineTypeDelegate->addItem("Пунктирная", "none");
-        lineTypeDelegate->addItem("Ступенчатая", "step");
-        settingsTable->setItemDelegateForColumn(1, lineTypeDelegate);
-        
-        // Столбец 3: Тип точки
-        ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
-        pointTypeDelegate->addItem("Круг", "circle");
-        pointTypeDelegate->addItem("Квадрат", "square");
-        pointTypeDelegate->addItem("Крестик", "cross");
-        pointTypeDelegate->addItem("Плюс", "plus");
-        pointTypeDelegate->addItem("Ромб", "diamond");
-        pointTypeDelegate->addItem("Без точки", "none");
-        settingsTable->setItemDelegateForColumn(3, pointTypeDelegate);
-        
-        // Столбец 5: Цвет
-        ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(this);
-        settingsTable->setItemDelegateForColumn(5, colorDelegate);
-    }
-    else if (plotType == "Гистограмма") {
-        // Столбец 1: Интервал
-        ComboItemDelegate* intervalDelegate = new ComboItemDelegate(this);
-        intervalDelegate->addItem("Автоматически", "auto");
-        intervalDelegate->addItem("10", "10");
-        intervalDelegate->addItem("20", "20");
-        intervalDelegate->addItem("50", "50");
-        intervalDelegate->addItem("100", "100");
-        settingsTable->setItemDelegateForColumn(1, intervalDelegate);
-        
-        // Столбец 2: Цвет
-        ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(this);
-        settingsTable->setItemDelegateForColumn(2, colorDelegate);
-    }
-    else if (plotType == "Скаттерплот") {
-        // Столбец 2: Тип точки
-        ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(this);
-        pointTypeDelegate->addItem("Круг", "circle");
-        pointTypeDelegate->addItem("Квадрат", "square");
-        pointTypeDelegate->addItem("Крестик", "cross");
-        pointTypeDelegate->addItem("Плюс", "plus");
-        pointTypeDelegate->addItem("Ромб", "diamond");
-        settingsTable->setItemDelegateForColumn(2, pointTypeDelegate);
-        
-        // Столбец 3: Цвет
-        ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(this);
-        settingsTable->setItemDelegateForColumn(3, colorDelegate);
-    }
-}
 
