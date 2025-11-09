@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QMap>
+class QCustomPlot;
+class QTableWidget;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -25,12 +27,14 @@ private slots:
     void removeRow();
     void addInstrument();
     void removeInstrument();
-    void drawSimpleGraph();
     void onPlotSettingsTabChanged(int index);
     void onPlotTabChanged(int index);
+    void onPlotTabMoved(int from, int to);
     void onColumnHeaderDoubleClicked(int col);
     void openReportDialog();
     void onInstrumentCellDoubleClicked(int row, int column);
+    void removeGraph(int index = -1);
+    void updateInstrumentTexts();
 
     void on_import_CSV_triggered();
 
@@ -40,12 +44,19 @@ private:
     QString getColumnName(int columnIndex);
     void syncVariableInstrumentsTable();
     void syncPlotSettingsTables();
-    void updateInstrumentTexts();
     QString getInstrumentDisplayText(int instrumentIndex);
-    void addPlotSettingsRow(const QString& columnName);
+    void addDynamicPlotTab(const QString& plotType);
+    struct PlotTab {
+        QString name;
+        QString type;
+        QCustomPlot* plot;
+        QWidget* settingsTab;
+        QTableWidget* settingsTable;
+    };
 
 private:
     Ui::MainWindow *ui;
     QMap<int, QString> m_columnTags; // Хранилище тегов столбцов
+    QList<PlotTab> m_plotTabs; // Список динамически добавленных графиков
 };
 #endif // MAINWINDOW_H
