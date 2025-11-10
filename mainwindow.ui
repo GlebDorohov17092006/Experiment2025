@@ -352,22 +352,22 @@
     <string>Создать отчет</string>
    </property>
   </action>
-  <action name="action_5">
-   <property name="text">
-    <string>Добавить</string>
-   </property>
-  </action>
-  <action name="action_6">
+  <action name="delete_plot">
    <property name="text">
     <string>Удалить</string>
    </property>
   </action>
-  <action name="action_7">
+  <action name="add_graph">
+   <property name="text">
+    <string>График</string>
+   </property>
+  </action>
+  <action name="add_histogram">
    <property name="text">
     <string>Гистограмма</string>
    </property>
   </action>
-  <action name="action_8">
+  <action name="add_scatterplot">
    <property name="text">
     <string>Скаттерплот</string>
    </property>

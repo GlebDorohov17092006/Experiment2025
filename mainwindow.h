@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QMap>
+class QCustomPlot;
+class QTableWidget;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -51,10 +53,10 @@ private:
         QWidget* settingsTab;
         QTableWidget* settingsTable;
     };
->>>>>>> 08b40e3 (Used ItemDelegate in graph settings)
 
 private:
     Ui::MainWindow *ui;
     QMap<int, QString> m_columnTags; // Хранилище тегов столбцов
+    QList<PlotTab> m_plotTabs; // Список динамически добавленных графиков
 };
 #endif // MAINWINDOW_H
