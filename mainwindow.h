@@ -5,6 +5,7 @@
 #include <QMap>
 class QCustomPlot;
 class QTableWidget;
+class BaseSettingsWidget;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -42,15 +43,20 @@ private:
     void setColumnTag(int columnIndex, const QString& tag);
     QString getColumnTag(int columnIndex);
     QString getColumnName(int columnIndex);
+    QStringList getAllColumnNames() const;
+    void updateHeatmapColumnLists();
     void syncVariableInstrumentsTable();
     void syncPlotSettingsTables();
     QString getInstrumentDisplayText(int instrumentIndex);
     void addDynamicPlotTab(const QString& plotType);
+    void drawHeatmap(int plotTabIndex);
+    void updateHeatmapGraphs();
+
     struct PlotTab {
         QString name;
         QString type;
         QCustomPlot* plot;
-        QWidget* settingsTab;
+        BaseSettingsWidget* settingsTab;
         QTableWidget* settingsTable;
     };
 

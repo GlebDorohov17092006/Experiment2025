@@ -2,6 +2,7 @@
 #define BASESETTINGSWIDGET_H
 
 #include <QWidget>
+#include <QStringList>
 
 QT_BEGIN_NAMESPACE
 class QTableWidget;
@@ -21,6 +22,9 @@ public:
 
     virtual QTableWidget* settingsTable() const = 0;
     virtual void setupDelegates(QWidget* parent) = 0;
+    
+    // Виртуальный метод для обновления списка колонок (по умолчанию ничего не делает)
+    virtual void updateColumnList(const QStringList& columnNames) { Q_UNUSED(columnNames); }
 
     static BaseSettingsWidget* create(const QString& plotType, QWidget* parent = nullptr);
 };
