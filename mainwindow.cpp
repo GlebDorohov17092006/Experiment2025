@@ -5,6 +5,7 @@
 #include "reportdialog.h"
 #include "qcustomplot.h"
 #include "basesettingswidget.h"
+#include "heatmapsettingswidget.h"
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -23,7 +24,8 @@
 #include <QTabBar>
 #include <algorithm>
 #include <QFileDialog>
-#include <parser.h>
+#include <QStringList>
+#include <limits>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -42,7 +44,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->add_graph, &QAction::triggered, this, [this]() { addDynamicPlotTab("График"); });
     connect(ui->add_histogram, &QAction::triggered, this, [this]() { addDynamicPlotTab("Гистограмма"); });
     connect(ui->add_scatterplot, &QAction::triggered, this, [this]() { addDynamicPlotTab("Скаттерплот"); });
+    connect(ui->add_heatmap, &QAction::triggered, this, [this]() { addDynamicPlotTab("Хитмап"); });
     connect(ui->delete_plot, &QAction::triggered, this, [this]() { removeGraph(); });
+
+    // Подключаем сигнал изменения данных в таблице для обновления heatmap графиков
+    connect(ui->tableWidget, &QTableWidget::itemChanged, this, &MainWindow::updateHeatmapGraphs);
     
     // Подключаем обработчик для перетаскивания вкладок графиков
     connect(ui->tabPlot->tabBar(), &QTabBar::tabMoved, this, &MainWindow::onPlotTabMoved);
@@ -55,6 +61,7 @@ MainWindow::MainWindow(QWidget *parent)
     addDynamicPlotTab("График");
     addDynamicPlotTab("Гистограмма");
     addDynamicPlotTab("Скаттерплот");
+    addDynamicPlotTab("Хитмап");
 }
 
 MainWindow::~MainWindow()
@@ -124,6 +131,9 @@ void MainWindow::addColumn()
             plotTab.settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
         }
     }
+    
+    // Обновляем список колонок в ComboBox для HeatmapSettingsWidget
+    updateHeatmapColumnLists();
 }
 
 void MainWindow::removeColumn()
@@ -168,6 +178,9 @@ void MainWindow::removeColumn()
                         }
                     }
                 }
+                
+                // Обновляем список колонок в ComboBox для HeatmapSettingsWidget
+                updateHeatmapColumnLists();
                 return;
             }
         }
@@ -178,6 +191,9 @@ void MainWindow::addRow()
 {
     int currentRows = ui->tableWidget->rowCount();
     ui->tableWidget->insertRow(currentRows);
+    
+    // Обновляем heatmap графики после добавления строки
+    updateHeatmapGraphs();
 }
 
 void MainWindow::removeRow()
@@ -210,6 +226,9 @@ void MainWindow::removeRow()
                 for (int row : sortedRows) {
                     ui->tableWidget->removeRow(row);
                 }
+                
+                // Обновляем heatmap графики после удаления строк
+                updateHeatmapGraphs();
                 return;
             }
         }
@@ -306,6 +325,9 @@ void MainWindow::onColumnHeaderDoubleClicked(int col)
                     plotTab.settingsTable->setVerticalHeaderItem(col, new QTableWidgetItem(newName));
                 }
             }
+            
+            // Обновляем список колонок в ComboBox для HeatmapSettingsWidget
+            updateHeatmapColumnLists();
         }
     }
 }
@@ -322,6 +344,37 @@ QString MainWindow::getColumnName(int columnIndex)
         return fullText;
     } else {
         return QString("Столбец %1").arg(columnIndex + 1);
+    }
+}
+
+QStringList MainWindow::getAllColumnNames() const
+{
+    QStringList columnNames;
+    int columnCount = ui->tableWidget->columnCount();
+    for (int i = 0; i < columnCount; ++i) {
+        QTableWidgetItem* headerItem = ui->tableWidget->horizontalHeaderItem(i);
+        if (headerItem) {
+            QString fullText = headerItem->text();
+            int newlinePos = fullText.indexOf('\n');
+            if (newlinePos != -1) {
+                columnNames.append(fullText.left(newlinePos));
+            } else {
+                columnNames.append(fullText);
+            }
+        } else {
+            columnNames.append(QString("Столбец %1").arg(i + 1));
+        }
+    }
+    return columnNames;
+}
+
+void MainWindow::updateHeatmapColumnLists()
+{
+    QStringList columnNames = getAllColumnNames();
+    for (auto& plotTab : m_plotTabs) {
+        if (plotTab.settingsTab) {
+            plotTab.settingsTab->updateColumnList(columnNames);
+        }
     }
 }
 
@@ -406,6 +459,9 @@ void MainWindow::syncPlotSettingsTables()
             }
         }
     }
+    
+    // Обновляем список колонок в ComboBox для HeatmapSettingsWidget
+    updateHeatmapColumnLists();
 }
 
 QString MainWindow::getInstrumentDisplayText(int instrumentIndex)
@@ -512,7 +568,7 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
 {
     QString baseName = plotType;
     QString tabName;
-    
+
     // Проверяем, есть ли уже график с базовым именем (без номера)
     bool hasBaseName = false;
     for (const auto& tab : m_plotTabs) {
@@ -588,14 +644,30 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     
     ui->tabPlotSettings->addTab(settingsWidget, tabName);
     
+    // Обновляем список колонок в ComboBox (для HeatmapSettingsWidget)
+    settingsWidget->updateColumnList(getAllColumnNames());
+    
     // Сохраняем информацию о графике
     PlotTab plotTab;
     plotTab.name = tabName;
     plotTab.type = plotType;
     plotTab.plot = plot;
-    plotTab.settingsTab = settingsWidget;
+    plotTab.settingsTab = settingsWidget;  // settingsWidget уже имеет тип BaseSettingsWidget*
     plotTab.settingsTable = settingsTable;
+    int plotTabIndex = m_plotTabs.size();
     m_plotTabs.append(plotTab);
+    
+    // Если это heatmap, настраиваем сигналы и отрисовываем график
+    if (plotType == "Хитмап") {
+        HeatmapSettingsWidget* heatmapWidget = qobject_cast<HeatmapSettingsWidget*>(settingsWidget);
+        if (heatmapWidget) {
+            // Подключаем сигнал изменения выбора осей
+            connect(heatmapWidget, &HeatmapSettingsWidget::axisSelectionChanged,
+                    this, [this, plotTabIndex]() { drawHeatmap(plotTabIndex); });
+            // Первоначальная отрисовка
+            drawHeatmap(plotTabIndex);
+        }
+    }
 }
 
 void MainWindow::removeGraph(int index)
@@ -680,3 +752,186 @@ void MainWindow::on_import_CSV_triggered()
 }
 
 
+void MainWindow::drawHeatmap(int plotTabIndex)
+{
+    if (plotTabIndex < 0 || plotTabIndex >= m_plotTabs.size()) {
+        return;
+    }
+    
+    PlotTab& plotTab = m_plotTabs[plotTabIndex];
+    if (plotTab.type != "Хитмап") {
+        return;
+    }
+    
+    HeatmapSettingsWidget* heatmapWidget = qobject_cast<HeatmapSettingsWidget*>(plotTab.settingsTab);
+    if (!heatmapWidget || !plotTab.plot) {
+        return;
+    }
+    
+    // Получаем индексы выбранных колонок
+    int xColumnIndex = heatmapWidget->getXAxisColumnIndex();
+    int yColumnIndex = heatmapWidget->getYAxisColumnIndex();
+    
+    if (xColumnIndex < 0 || yColumnIndex < 0 ||
+        xColumnIndex >= ui->tableWidget->columnCount() ||
+        yColumnIndex >= ui->tableWidget->columnCount()) {
+        plotTab.plot->clearPlottables();
+        plotTab.plot->replot();
+        return;
+    }
+    
+    // Собираем данные и считаем количество повторений
+    QMap<QPair<double, double>, int> pointCounts;
+    int rowCount = ui->tableWidget->rowCount();
+    double minX = std::numeric_limits<double>::max();
+    double maxX = std::numeric_limits<double>::lowest();
+    double minY = std::numeric_limits<double>::max();
+    double maxY = std::numeric_limits<double>::lowest();
+    
+    for (int row = 0; row < rowCount; ++row) {
+        QTableWidgetItem* xItem = ui->tableWidget->item(row, xColumnIndex);
+        QTableWidgetItem* yItem = ui->tableWidget->item(row, yColumnIndex);
+        
+        if (!xItem || !yItem) {
+            continue;
+        }
+        
+        const QString xText = xItem->text().trimmed();
+        const QString yText = yItem->text().trimmed();
+        if (xText.isEmpty() || yText.isEmpty()) {
+            continue;
+        }
+        
+        bool xOk = false;
+        bool yOk = false;
+        double xValue = xText.toDouble(&xOk);
+        double yValue = yText.toDouble(&yOk);
+        if (!xOk || !yOk) {
+            continue;
+        }
+        
+        QPair<double, double> key = qMakePair(xValue, yValue);
+        pointCounts[key] += 1;
+        
+        minX = std::min(minX, xValue);
+        maxX = std::max(maxX, xValue);
+        minY = std::min(minY, yValue);
+        maxY = std::max(maxY, yValue);
+    }
+    
+    plotTab.plot->clearPlottables();
+    
+    if (pointCounts.isEmpty()) {
+        plotTab.plot->replot();
+        return;
+    }
+    
+    // Определяем минимальное и максимальное количество повторений
+    int minCount = std::numeric_limits<int>::max();
+    int maxCount = std::numeric_limits<int>::lowest();
+    for (auto it = pointCounts.cbegin(); it != pointCounts.cend(); ++it) {
+        minCount = std::min(minCount, it.value());
+        maxCount = std::max(maxCount, it.value());
+    }
+    
+    const QVector<QPair<double, QColor>> gradientStops = {
+        {0.0, QColor(0, 0, 255)},      // Синий
+        {0.45, QColor(0, 128, 0)},     // Зеленый
+        {0.7, QColor(255, 255, 0)},    // Желтый
+        {1.0, QColor(128, 0, 0)}       // Бордовый
+    };
+
+    auto interpolateColor = [&gradientStops](double value) -> QColor {
+        if (gradientStops.isEmpty()) {
+            return QColor(128, 0, 0);
+        }
+        if (value <= gradientStops.first().first) {
+            return gradientStops.first().second;
+        }
+        if (value >= gradientStops.last().first) {
+            return gradientStops.last().second;
+        }
+
+        for (int i = 0; i < gradientStops.size() - 1; ++i) {
+            const double startPos = gradientStops[i].first;
+            const double endPos = gradientStops[i + 1].first;
+            if (value >= startPos && value <= endPos) {
+                double localT = (value - startPos) / (endPos - startPos);
+                const QColor& startColor = gradientStops[i].second;
+                const QColor& endColor = gradientStops[i + 1].second;
+                int r = startColor.red()   + static_cast<int>(localT * (endColor.red()   - startColor.red()));
+                int g = startColor.green() + static_cast<int>(localT * (endColor.green() - startColor.green()));
+                int b = startColor.blue()  + static_cast<int>(localT * (endColor.blue()  - startColor.blue()));
+                return QColor(r, g, b);
+            }
+        }
+
+        return gradientStops.last().second;
+    };
+
+    const double minRadius = 6.0;
+    const double maxRadius = 18.0;
+    
+    // Добавляем графики для каждой точки с уникальным цветом и радиусом
+    for (auto it = pointCounts.cbegin(); it != pointCounts.cend(); ++it) {
+        const double xValue = it.key().first;
+        const double yValue = it.key().second;
+        const int count = it.value();
+        
+        double t = 1.0;
+        if (maxCount != minCount) {
+            t = (static_cast<double>(count) - minCount) / (maxCount - minCount);
+        }
+        
+        QColor color = (maxCount == minCount) ? gradientStops.last().second : interpolateColor(t);
+        
+        double radius = minRadius;
+        if (maxCount != minCount) {
+            radius = minRadius + t * (maxRadius - minRadius);
+        }
+        
+        QColor fillColor = color;
+        fillColor.setAlphaF(0.35); // добавляем прозрачность
+        QPen pen(color);
+        pen.setWidthF(1.0);
+
+        QCPGraph* pointGraph = plotTab.plot->addGraph();
+        pointGraph->setLineStyle(QCPGraph::lsNone);
+        pointGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle,
+                                                    pen,
+                                                    QBrush(fillColor),
+                                                    radius));
+        pointGraph->addData(xValue, yValue);
+    }
+    
+    // Устанавливаем подписи осей
+    plotTab.plot->xAxis->setLabel(heatmapWidget->getXAxisLabel());
+    plotTab.plot->yAxis->setLabel(heatmapWidget->getYAxisLabel());
+    
+    // Настраиваем диапазоны осей
+    if (minX < maxX) {
+        double xMargin = (maxX - minX) * 0.05;
+        plotTab.plot->xAxis->setRange(minX - xMargin, maxX + xMargin);
+    } else {
+        plotTab.plot->xAxis->setRange(minX - 1.0, maxX + 1.0);
+    }
+    
+    if (minY < maxY) {
+        double yMargin = (maxY - minY) * 0.05;
+        plotTab.plot->yAxis->setRange(minY - yMargin, maxY + yMargin);
+    } else {
+        plotTab.plot->yAxis->setRange(minY - 1.0, maxY + 1.0);
+    }
+    
+    plotTab.plot->replot();
+}
+
+void MainWindow::updateHeatmapGraphs()
+{
+    // Обновляем все heatmap графики
+    for (int i = 0; i < m_plotTabs.size(); ++i) {
+        if (m_plotTabs[i].type == "Хитмап") {
+            drawHeatmap(i);
+        }
+    }
+}
