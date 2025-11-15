@@ -1,10 +1,14 @@
 #include <windows.h>
+
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "parser.h"
 #include "reportdialog.h"
 #include "qcustomplot.h"
 #include "basesettingswidget.h"
+#include "Experiment.h"
+#include "parser.h"
+
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -23,7 +27,6 @@
 #include <QTabBar>
 #include <algorithm>
 #include <QFileDialog>
-#include <parser.h>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -666,7 +669,9 @@ void MainWindow::on_import_CSV_triggered()
             }
 
             //Parsing files
-            parser(csvFile.toStdString(), jsonFile.toStdString());
+            auto variables = parser(csvFile.toStdString(), jsonFile.toStdString());
+            Experiment::destroy_instance();
+            Experiment* experiment = Experiment::get_instance(variables, std::vector<Variable>());
         }
         else
         {
