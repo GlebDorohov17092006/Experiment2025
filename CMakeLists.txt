@@ -48,6 +48,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(ExperimentTable
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        ComboItemDelegate.h
+        ComboItemDelegate.cpp
+        ComboItemDelegate.cpp
     )
 
     # ВАЖНО: Явно указываем include директории для target
