@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QTableWidgetItem>
 #include <memory>
 
 class TableModel;
@@ -9,6 +10,7 @@ class InstrumentsModel;
 class Experiment;
 class Instrument;
 class Variable;
+class ComboItemDelegate;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -31,16 +33,22 @@ private slots:
     void removeRow();
     void addInstrument();
     void removeInstrument();
+    void onInstrumentChanged(QTableWidgetItem *item);
 
 private:
     Ui::MainWindow *ui;
     TableModel* m_tableModel;
     InstrumentsModel* m_instrumentsModel;
+    ComboItemDelegate* m_instrumentDelegate;
+    ComboItemDelegate* m_errorTypeDelegate;
     std::vector<std::shared_ptr<Instrument>> m_instruments;
     Experiment* m_experiment;
+    std::shared_ptr<Instrument> m_noInstrument; // Постоянный инструмент "Нет инструмента"
 
-    // Добавляем объявления недостающих методов
     void createTestData();
     void updateVariableInstrumentsTable();
+    void updateInstrumentDelegate();
+    void setupErrorTypeDelegate();
+    void setupNoInstrument();
 };
 #endif // MAINWINDOW_H

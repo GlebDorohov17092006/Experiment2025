@@ -2,7 +2,6 @@
 
 #include <QAbstractTableModel>
 #include "Experiment.h"
-#include <memory>
 
 class TableModel : public QAbstractTableModel
 {
@@ -18,10 +17,8 @@ public:
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 
-    void setExperiment(Experiment* experiment);
     void refreshData();
 
 private:
     Experiment* m_experiment;
-    std::vector<std::shared_ptr<Variable>> m_variables;
 };

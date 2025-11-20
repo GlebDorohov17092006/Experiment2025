@@ -7,40 +7,36 @@
 #include "AbsoluteInstrument.h"
 #include "RelativeInstrument.h"
 #include "CombinedInstrument.h"
+#include "ComboItemDelegate.h"
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QTableView>
 #include <QVBoxLayout>
+#include <QHeaderView>
+#include <QTableWidget>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_tableModel(new TableModel(this))
     , m_instrumentsModel(new InstrumentsModel(this))
-    , m_experiment(nullptr)
+    , m_instrumentDelegate(new ComboItemDelegate(this))
+    , m_errorTypeDelegate(new ComboItemDelegate(this))
+    , m_experiment(Experiment::get_instance())
+    , m_noInstrument(std::make_shared<AbsoluteInstrument>("(нет инструмента)", 0.0))
 {
     ui->setupUi(this);
 
-    // Инициализируем эксперимент
-    std::vector<Variable> variables;
-    std::vector<Variable> calculated_variables;
-    m_experiment = Experiment::get_instance(variables, calculated_variables);
-
-    // СОЗДАЕМ ТЕСТОВЫЕ ДАННЫЕ
+    setupNoInstrument();
     createTestData();
 
-    // Привязываем модели
-    m_tableModel->setExperiment(m_experiment);
-    m_instrumentsModel->setInstruments(&m_instruments);
-
-    // ЗАМЕНЯЕМ tableWidget на TableView
+    // Заменяем QTableWidget на QTableView для измерений
     QTableView* measurementsView = new QTableView();
     measurementsView->setModel(m_tableModel);
     measurementsView->setSelectionBehavior(QAbstractItemView::SelectItems);
     measurementsView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     measurementsView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
-    // Заменяем tableWidget в splitter_2
     for (int i = 0; i < ui->splitter_2->count(); ++i) {
         if (ui->splitter_2->widget(i) == ui->tableWidget) {
             ui->splitter_2->replaceWidget(i, measurementsView);
@@ -49,13 +45,12 @@ MainWindow::MainWindow(QWidget *parent)
         }
     }
 
-    // ЗАМЕНЯЕМ instrumentsTable на TableView
+    // Заменяем QTableWidget на QTableView для инструментов
     QTableView* instrumentsView = new QTableView();
     instrumentsView->setModel(m_instrumentsModel);
     instrumentsView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     instrumentsView->verticalHeader()->setVisible(false);
 
-    // Заменяем instrumentsTable в gridLayout_5
     QLayoutItem* item = ui->gridLayout_5->itemAtPosition(0, 0);
     if (item && item->widget() == ui->instrumentsTable) {
         ui->gridLayout_5->removeWidget(ui->instrumentsTable);
@@ -63,55 +58,136 @@ MainWindow::MainWindow(QWidget *parent)
         ui->instrumentsTable->deleteLater();
     }
 
+    m_instrumentsModel->setInstruments(&m_instruments);
+
+    // Настраиваем делегаты
+    updateInstrumentDelegate();
+    setupErrorTypeDelegate();
+
+    // Применяем делегаты к таблицам
+    ui->variableInstrumentsTable->setItemDelegateForRow(0, m_instrumentDelegate);
+    instrumentsView->setItemDelegateForColumn(1, m_errorTypeDelegate);
+
+    // Подключаем сигналы
     connect(ui->addColumnButton, &QPushButton::clicked, this, &MainWindow::addColumn);
     connect(ui->removeColumnButton, &QPushButton::clicked, this, &MainWindow::removeColumn);
     connect(ui->addRowButton, &QPushButton::clicked, this, &MainWindow::addRow);
     connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
     connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
     connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
+    connect(ui->variableInstrumentsTable, &QTableWidget::itemChanged,
+            this, &MainWindow::onInstrumentChanged);
+
+    // Подключаем сигнал изменения названия инструмента
+    connect(m_instrumentsModel, &InstrumentsModel::instrumentNameChanged,
+            this, &MainWindow::updateInstrumentDelegate);
+}
+
+void MainWindow::setupNoInstrument()
+{
+    // Добавляем постоянный инструмент "Нет инструмента" в начало списка
+    m_instruments.insert(m_instruments.begin(), m_noInstrument);
+}
+
+void MainWindow::updateInstrumentDelegate()
+{
+    // Создаем новый делегат вместо пересоздания
+    if (m_instrumentDelegate) {
+        delete m_instrumentDelegate;
+    }
+    m_instrumentDelegate = new ComboItemDelegate(this);
+
+    // Добавляем опцию "Нет инструмента"
+    m_instrumentDelegate->addItem("(нет инструмента)", "(нет инструмента)");
+
+    // Добавляем все доступные инструменты (кроме самого "Нет инструмента")
+    for (size_t i = 1; i < m_instruments.size(); ++i) {
+        const auto& instrument = m_instruments[i];
+        QString name = QString::fromStdString(instrument->get_name());
+        m_instrumentDelegate->addItem(name, name);
+    }
+
+    // Применяем обновленный делегат
+    ui->variableInstrumentsTable->setItemDelegateForRow(0, m_instrumentDelegate);
+}
+
+void MainWindow::setupErrorTypeDelegate()
+{
+    // Делегат для выбора типа погрешности
+    m_errorTypeDelegate->addItem("Абсолютная", "Абсолютная");
+    m_errorTypeDelegate->addItem("Относительная", "Относительная");
+}
+
+void MainWindow::onInstrumentChanged(QTableWidgetItem *item)
+{
+    if (!item) return;
+
+    int column = item->column();
+    QString selectedInstrument = item->text();
+
+    if (column >= static_cast<int>(m_experiment->get_variables_count())) {
+        return;
+    }
+
+    auto var = m_experiment->get_variable(column);
+
+    if (selectedInstrument == "(нет инструмента)") {
+        var->add_instrument(m_noInstrument.get()); // Используем постоянный инструмент
+    } else {
+        // Находим выбранный инструмент
+        bool found = false;
+        for (const auto& instrument : m_instruments) {
+            if (QString::fromStdString(instrument->get_name()) == selectedInstrument) {
+                var->add_instrument(instrument.get());
+                found = true;
+                break;
+            }
+        }
+
+        // Если инструмент не найден (например, был удален), используем "Нет инструмента"
+        if (!found) {
+            var->add_instrument(m_noInstrument.get());
+            item->setText("(нет инструмента)");
+        }
+    }
+
+    // Обновляем таблицу измерений (чтобы показать/скрыть погрешности)
+    m_tableModel->refreshData();
 }
 
 void MainWindow::createTestData()
 {
-    // СОЗДАЕМ ТЕСТОВЫЕ ИНСТРУМЕНТЫ
     auto thermometer = std::make_shared<AbsoluteInstrument>("Термометр", 0.5);
-    auto voltmeter = std::make_shared<RelativeInstrument>("Вольтметр", 0.02); // 2%
-    auto multimeter = std::make_shared<CombinedInstrument>("Мультиметр");
-    auto multimeterPtr = std::dynamic_pointer_cast<CombinedInstrument>(multimeter);
-    if (multimeterPtr) {
-        multimeterPtr->add_error(0.1);
-        multimeterPtr->add_error(0.05);
-    }
+    auto voltmeter = std::make_shared<RelativeInstrument>("Вольтметр", 0.02);
 
+    // Добавляем инструменты после постоянного "Нет инструмента"
     m_instruments.push_back(thermometer);
     m_instruments.push_back(voltmeter);
-    m_instruments.push_back(multimeter);
 
-    // СОЗДАЕМ ТЕСТОВЫЕ ПЕРЕМЕННЫЕ С ДАННЫМИ
     std::vector<double> temperatureData = {20.5, 21.2, 22.8, 23.1, 24.5, 25.0};
     std::vector<double> voltageData = {12.1, 12.3, 11.9, 12.5, 12.2, 12.4};
     std::vector<double> currentData = {1.5, 1.6, 1.55, 1.62, 1.58, 1.61};
 
-    Variable tempVar(temperatureData, "Температура", "T", thermometer.get());
-    Variable voltageVar(voltageData, "Напряжение", "U", voltmeter.get());
-    Variable currentVar(currentData, "Ток", "I", multimeter.get());
+    // По умолчанию используем "Нет инструмента"
+    auto tempVar = std::make_shared<Variable>(temperatureData, "Температура", "T", m_noInstrument.get());
+    auto voltageVar = std::make_shared<Variable>(voltageData, "Напряжение", "U", m_noInstrument.get());
+    auto currentVar = std::make_shared<Variable>(currentData, "Ток", "I", m_noInstrument.get());
 
     m_experiment->add_variable(tempVar);
     m_experiment->add_variable(voltageVar);
     m_experiment->add_variable(currentVar);
 
-    // ОБНОВЛЯЕМ ТАБЛИЦУ ИНСТРУМЕНТОВ ПЕРЕМЕННЫХ
     updateVariableInstrumentsTable();
 }
 
 void MainWindow::updateVariableInstrumentsTable()
 {
-    // Очищаем таблицу
     ui->variableInstrumentsTable->clear();
     ui->variableInstrumentsTable->setRowCount(1);
-    ui->variableInstrumentsTable->setColumnCount(m_experiment->get_variables_count());
+    ui->variableInstrumentsTable->setColumnCount(static_cast<int>(m_experiment->get_variables_count()));
 
-    // Заполняем заголовки и данные об инструментах
+    // Устанавливаем заголовки
+    QStringList headers;
     for (size_t i = 0; i < m_experiment->get_variables_count(); ++i) {
         auto var = m_experiment->get_variable(i);
         QString headerName = QString::fromStdString(var->get_name_tables());
@@ -120,10 +196,14 @@ void MainWindow::updateVariableInstrumentsTable()
         if (!tag.isEmpty()) {
             headerName += "\n(" + tag + ")";
         }
+        headers << headerName;
+    }
+    ui->variableInstrumentsTable->setHorizontalHeaderLabels(headers);
 
-        ui->variableInstrumentsTable->setHorizontalHeaderItem(i, new QTableWidgetItem(headerName));
+    // Заполняем данные об инструментах
+    for (size_t i = 0; i < m_experiment->get_variables_count(); ++i) {
+        auto var = m_experiment->get_variable(i);
 
-        // Заполняем инструмент
         QTableWidgetItem* item = new QTableWidgetItem();
         try {
             QString instrumentName = QString::fromStdString(var->get_name_instrument());
@@ -131,7 +211,10 @@ void MainWindow::updateVariableInstrumentsTable()
         } catch (const std::exception&) {
             item->setText("(нет инструмента)");
         }
-        ui->variableInstrumentsTable->setItem(0, i, item);
+
+        // Делаем ячейку редактируемой
+        item->setFlags(item->flags() | Qt::ItemIsEditable);
+        ui->variableInstrumentsTable->setItem(0, static_cast<int>(i), item);
     }
 }
 
@@ -143,34 +226,12 @@ void MainWindow::addColumn()
                                         QLineEdit::Normal, "Переменная", &ok);
     if (!ok || name.isEmpty()) return;
 
-    // Выбираем инструмент если есть
-    Instrument* selectedInstrument = nullptr;
-    if (!m_instruments.empty()) {
-        QStringList instrumentNames;
-        for (const auto& instr : m_instruments) {
-            instrumentNames << QString::fromStdString(instr->get_name());
-        }
-
-        QString instrumentName = QInputDialog::getItem(this, "Выбор инструмента",
-                                                      "Выберите инструмент:",
-                                                      instrumentNames, 0, false, &ok);
-        if (ok) {
-            for (const auto& instr : m_instruments) {
-                if (QString::fromStdString(instr->get_name()) == instrumentName) {
-                    selectedInstrument = instr.get();
-                    break;
-                }
-            }
-        }
-    }
-
-    // Создаем переменную с начальными данными
-    std::vector<double> measurements(6, 0.0); // 6 пустых значений
-    Variable newVar(measurements, name.toStdString(), "", selectedInstrument);
+    // Создаем переменную с инструментом "Нет инструмента" по умолчанию
+    std::vector<double> measurements(6, 0.0);
+    auto newVar = std::make_shared<Variable>(measurements, name.toStdString(), "", m_noInstrument.get());
     m_experiment->add_variable(newVar);
-    m_tableModel->refreshData();
 
-    // Обновляем таблицу инструментов переменных
+    m_tableModel->refreshData();
     updateVariableInstrumentsTable();
 }
 
@@ -224,44 +285,53 @@ void MainWindow::addInstrument()
                                         QLineEdit::Normal, "Новый прибор", &ok);
     if (!ok || name.isEmpty()) return;
 
-    QStringList types = {"Абсолютная", "Относительная", "Комбинированная"};
-    QString type = QInputDialog::getItem(this, "Тип инструмента",
-                                        "Выберите тип погрешности:",
-                                        types, 0, false, &ok);
-    if (!ok) return;
-
-    double error = QInputDialog::getDouble(this, "Погрешность",
-                                          "Введите значение погрешности:",
-                                          0.1, 0, 100, 3, &ok);
-    if (!ok) return;
-
-    std::shared_ptr<Instrument> instrument;
-
-    if (type == "Абсолютная") {
-        instrument = std::make_shared<AbsoluteInstrument>(name.toStdString(), error);
-    } else if (type == "Относительная") {
-        instrument = std::make_shared<RelativeInstrument>(name.toStdString(), error);
-    } else {
-        instrument = std::make_shared<CombinedInstrument>(name.toStdString());
-        auto combPtr = std::dynamic_pointer_cast<CombinedInstrument>(instrument);
-        if (combPtr) {
-            combPtr->add_error(error);
-        }
-    }
+    // Создаем инструмент с нулевой погрешностью (пользователь установит через таблицу)
+    std::shared_ptr<Instrument> instrument = std::make_shared<AbsoluteInstrument>(name.toStdString(), 0.0);
 
     m_instruments.push_back(instrument);
     m_instrumentsModel->refreshData();
+
+    // Обновляем делегат с новым инструментом
+    updateInstrumentDelegate();
 }
 
 void MainWindow::removeInstrument()
 {
-    if (m_instruments.empty()) {
-        QMessageBox::information(this, "Информация", "Нет приборов для удаления");
+    // Нельзя удалить инструмент "Нет инструмента"
+    if (m_instruments.size() <= 1) {
+        QMessageBox::information(this, "Информация", "Нельзя удалить базовый инструмент 'Нет инструмента'");
         return;
+    }
+
+    // Удаляем последний добавленный инструмент (кроме "Нет инструмента")
+    auto instrumentToRemove = m_instruments.back();
+    QString instrumentName = QString::fromStdString(instrumentToRemove->get_name());
+
+    // Заменяем этот инструмент на "Нет инструмента" во всех переменных
+    for (size_t i = 0; i < m_experiment->get_variables_count(); ++i) {
+        auto var = m_experiment->get_variable(i);
+        try {
+            if (QString::fromStdString(var->get_name_instrument()) == instrumentName) {
+                var->add_instrument(m_noInstrument.get());
+                // Обновляем отображение в таблице
+                QTableWidgetItem* item = ui->variableInstrumentsTable->item(0, static_cast<int>(i));
+                if (item) {
+                    item->setText("(нет инструмента)");
+                }
+            }
+        } catch (const std::exception&) {
+            // У переменной нет инструмента - ничего не делаем
+        }
     }
 
     m_instruments.pop_back();
     m_instrumentsModel->refreshData();
+
+    // Обновляем делегат
+    updateInstrumentDelegate();
+
+    // Обновляем таблицу измерений
+    m_tableModel->refreshData();
 }
 
 MainWindow::~MainWindow()
