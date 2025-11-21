@@ -38,10 +38,13 @@ private slots:
     void onPlotTabChanged(int index);
     void onPlotTabMoved(int from, int to);
     void onColumnHeaderDoubleClicked(int col);
-    void openReportDialog();
+    void saveReport();
     void onInstrumentCellDoubleClicked(int row, int column);
     void removeGraph(int index = -1);
     void updateInstrumentTexts();
+    void addTextBlockToReport();
+    void addTableBlockToReport();
+    void addPlotBlockToReport();
 
     void on_import_CSV_triggered();
 

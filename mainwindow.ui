@@ -145,7 +145,7 @@
            </attribute>
            <layout class="QGridLayout" name="gridLayout_5">
             <item row="1" column="0">
-             <widget class="QPushButton" name="pushButton">
+             <widget class="QPushButton" name="addInstrument">
               <property name="font">
                <font>
                 <bold>false</bold>
@@ -157,7 +157,7 @@
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QPushButton" name="pushButton_2">
+             <widget class="QPushButton" name="deleteInstrument">
               <property name="font">
                <font>
                 <bold>false</bold>
@@ -172,7 +172,6 @@
              <widget class="QTableView" name="instrumentsTable">
               <property name="font">
                <font>
-                <weight>50</weight>
                 <bold>false</bold>
                </font>
               </property>
@@ -193,6 +192,73 @@
               <property name="documentMode">
                <bool>false</bool>
               </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="reportTab">
+           <attribute name="title">
+            <string>Отчет</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout">
+              <item>
+               <widget class="QPushButton" name="addTextBlockButton">
+                <property name="text">
+                 <string>Добавить текстовый блок</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="addTableBlockButton">
+                <property name="text">
+                 <string>Добавить табличный блок</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="addPlotBlockButton">
+                <property name="text">
+                 <string>Добавить график</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <widget class="QScrollArea" name="reportScrollArea">
+              <property name="widgetResizable">
+               <bool>true</bool>
+              </property>
+              <widget class="QWidget" name="reportContentWidget">
+               <property name="geometry">
+                <rect>
+                 <x>0</x>
+                 <y>0</y>
+                 <width>982</width>
+                 <height>396</height>
+                </rect>
+               </property>
+               <layout class="QVBoxLayout" name="reportContentLayout">
+                <property name="spacing">
+                 <number>10</number>
+                </property>
+               </layout>
+              </widget>
              </widget>
             </item>
            </layout>
@@ -239,7 +305,7 @@
     </property>
     <addaction name="import_CSV"/>
     <addaction name="action_CSV"/>
-    <addaction name="create_report"/>
+    <addaction name="save_report"/>
    </widget>
    <widget class="QMenu" name="menu">
     <property name="title">
@@ -270,9 +336,12 @@
     <string>Экспорт CSV</string>
    </property>
   </action>
-  <action name="create_report">
+  <action name="save_report">
    <property name="text">
-    <string>Создать отчет</string>
+    <string>Сохранить отчет</string>
+   </property>
+   <property name="toolTip">
+    <string>Сохранить отчет</string>
    </property>
   </action>
   <action name="delete_plot">
@@ -365,7 +434,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>pushButton</sender>
+   <sender>addInstrument</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
    <slot>addInstrument()</slot>
@@ -381,7 +450,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>pushButton_2</sender>
+   <sender>deleteInstrument</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
    <slot>removeInstrument()</slot>
@@ -397,10 +466,10 @@
    </hints>
   </connection>
   <connection>
-   <sender>create_report</sender>
+   <sender>save_report</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
-   <slot>openReportDialog()</slot>
+   <slot>saveReport()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -492,6 +561,54 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>addTextBlockButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>addTextBlockToReport()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>addTableBlockButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>addTableBlockToReport()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>addPlotBlockButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>addPlotBlockToReport()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>addColumn()</slot>
@@ -500,11 +617,14 @@
   <slot>removeRow()</slot>
   <slot>addInstrument()</slot>
   <slot>removeInstrument()</slot>
-  <slot>openReportDialog()</slot>
+  <slot>saveReport()</slot>
   <slot>onPlotSettingsTabChanged(int)</slot>
   <slot>onPlotTabChanged(int)</slot>
   <slot>removeGraph(int)</slot>
   <slot>onInstrumentCellDoubleClicked(int,int)</slot>
   <slot>updateInstrumentTexts()</slot>
+  <slot>addTextBlockToReport()</slot>
+  <slot>addTableBlockToReport()</slot>
+  <slot>addPlotBlockToReport()</slot>
  </slots>
 </ui>
