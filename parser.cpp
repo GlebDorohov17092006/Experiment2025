@@ -3,6 +3,7 @@
 #include <sstream>
 #include "json.hpp"
 #include "parser.h"
+#include "Experiment.h"
 #include "AbsoluteInstrument.h"
 #include "RelativeInstrument.h"
 using json = nlohmann::json;
@@ -18,13 +19,12 @@ std::vector<Variable> parser_csv(const std::string& filename)
 
     // If not found, try relative path from build directory
     if (!csv_file.is_open()) {
-        full_path = "../../" + filename;
-        csv_file.open(full_path);
+        return {};
     }
 
     if (!csv_file.is_open()) {
         std::cerr << "Open fault " << filename << std::endl;
-        exit(-3);
+        return {};
     }
 
     int num_line = 1;
@@ -73,13 +73,12 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
 
     // If not found, try relative path from build directory
     if (!json_file.is_open()) {
-        full_path = "../../" + filename;
-        json_file.open(full_path);
+        return;
     }
 
     if (!json_file.is_open()) {
         std::cerr << "Open fault " << filename << std::endl;
-        exit(-3);
+        return;
     }
 
     json instruments_data = json::parse(json_file);
