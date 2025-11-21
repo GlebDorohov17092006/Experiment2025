@@ -3,7 +3,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "parser.h"
-#include "reportdialog.h"
 #include "qcustomplot.h"
 #include "basesettingswidget.h"
 #include "Experiment.h"
@@ -18,6 +17,7 @@
 #include <QMessageBox>
 #include <QTableView>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QSet>
@@ -34,6 +34,10 @@
 #include <QTabBar>
 #include <algorithm>
 #include <QFileDialog>
+#include <QTextEdit>
+#include <QScrollArea>
+#include <QLabel>
+#include <QFrame>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -65,8 +69,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->removeColumnButton, &QPushButton::clicked, this, &MainWindow::removeColumn);
     connect(ui->addRowButton, &QPushButton::clicked, this, &MainWindow::addRow);
     connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
-    connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
-    connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
+    connect(ui->addInstrument, &QPushButton::clicked, this, &MainWindow::addInstrument);
+    connect(ui->deleteInstrument, &QPushButton::clicked, this, &MainWindow::removeInstrument);
 
     ui->instrumentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     ui->instrumentsTable->setColumnWidth(0, 150);
@@ -239,10 +243,9 @@ QString MainWindow::getColumnTag(int columnIndex)
     return m_columnTags.value(columnIndex, "");
 }
 
-void MainWindow::openReportDialog()
+void MainWindow::saveReport()
 {
-    ReportDialog dialog(this);
-    dialog.exec();
+
 }
 
 void MainWindow::updateVariableInstrumentsTable()
@@ -389,61 +392,61 @@ void MainWindow::onInstrumentCellDoubleClicked(int row, int column)
 
 void MainWindow::addDynamicPlotTab(const QString& plotType)
 {
-//    QString baseName = plotType;
-//    QString tabName;
-//
-//    // Проверяем, есть ли уже график с базовым именем (без номера)
-//    bool hasBaseName = false;
-//    for (const auto& tab : m_plotTabs) {
-//        if (tab.name == baseName) {
-//            hasBaseName = true;
-//            break;
-//        }
-//    }
-//
-//    // Если базового имени нет, используем его, иначе ищем минимальный свободный номер
-//    if (!hasBaseName) {
-//        tabName = baseName;
-//    } else {
-//        int counter = 1;
-//        bool nameExists;
-//        do {
-//            tabName = baseName + " " + QString::number(counter);
-//            nameExists = false;
-//
-//            for (const auto& tab : m_plotTabs) {
-//                if (tab.name == tabName) {
-//                    nameExists = true;
-//                    counter++;
-//                    break;
-//                }
-//            }
-//        } while (nameExists);
-//    }
-//
-//    // Создаем новый виджет для вкладки графика
-//    QWidget* plotWidget = new QWidget();
-//    QGridLayout* plotLayout = new QGridLayout(plotWidget);
-//    QCustomPlot* plot = new QCustomPlot(plotWidget);
-//    plot->setInteraction(QCP::iRangeDrag, true);
-//    plot->setInteraction(QCP::iRangeZoom, true);
-//    plotLayout->addWidget(plot, 0, 0);
-//
-//    // Создаем вкладку в tabPlot
-//    ui->tabPlot->addTab(plotWidget, tabName);
-//
-//    // Создаем соответствующий виджет настроек
-//    BaseSettingsWidget* settingsWidget = BaseSettingsWidget::create(plotType);
-//    if (!settingsWidget) {
-//        return;
-//    }
-//
-//    QTableWidget* settingsTable = settingsWidget->settingsTable();
-//    if (!settingsTable) {
-//        delete settingsWidget;
-//        return;
-//    }
-//
+    QString baseName = plotType;
+    QString tabName;
+
+    // Проверяем, есть ли уже график с базовым именем (без номера)
+    bool hasBaseName = false;
+    for (const auto& tab : m_plotTabs) {
+        if (tab.name == baseName) {
+            hasBaseName = true;
+            break;
+        }
+    }
+
+    // Если базового имени нет, используем его, иначе ищем минимальный свободный номер
+    if (!hasBaseName) {
+        tabName = baseName;
+    } else {
+        int counter = 1;
+        bool nameExists;
+        do {
+            tabName = baseName + " " + QString::number(counter);
+            nameExists = false;
+
+            for (const auto& tab : m_plotTabs) {
+                if (tab.name == tabName) {
+                    nameExists = true;
+                    counter++;
+                    break;
+                }
+            }
+        } while (nameExists);
+    }
+
+    // Создаем новый виджет для вкладки графика
+    QWidget* plotWidget = new QWidget();
+    QGridLayout* plotLayout = new QGridLayout(plotWidget);
+    QCustomPlot* plot = new QCustomPlot(plotWidget);
+    plot->setInteraction(QCP::iRangeDrag, true);
+    plot->setInteraction(QCP::iRangeZoom, true);
+    plotLayout->addWidget(plot, 0, 0);
+
+    // Создаем вкладку в tabPlot
+    ui->tabPlot->addTab(plotWidget, tabName);
+
+    // Создаем соответствующий виджет настроек
+    BaseSettingsWidget* settingsWidget = BaseSettingsWidget::create(plotType);
+    if (!settingsWidget) {
+        return;
+    }
+
+    QTableWidget* settingsTable = settingsWidget->settingsTable();
+    if (!settingsTable) {
+        delete settingsWidget;
+        return;
+    }
+
 //    // Настраиваем делегаты для редактирования ячеек
 //    settingsWidget->setupDelegates(this);
 //
@@ -464,17 +467,17 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
 //            settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
 //        }
 //    }
-//
-//    ui->tabPlotSettings->addTab(settingsWidget, tabName);
-//
-//    // Сохраняем информацию о графике
-//    PlotTab plotTab;
-//    plotTab.name = tabName;
-//    plotTab.type = plotType;
-//    plotTab.plot = plot;
-//    plotTab.settingsTab = settingsWidget;
-//    plotTab.settingsTable = settingsTable;
-//    m_plotTabs.append(plotTab);
+
+    ui->tabPlotSettings->addTab(settingsWidget, tabName);
+
+    // Сохраняем информацию о графике
+    PlotTab plotTab;
+    plotTab.name = tabName;
+    plotTab.type = plotType;
+    plotTab.plot = plot;
+    plotTab.settingsTab = settingsWidget;
+    plotTab.settingsTable = settingsTable;
+    m_plotTabs.append(plotTab);
 }
 
 void MainWindow::removeColumn()
@@ -569,38 +572,38 @@ void MainWindow::removeInstrument()
 
 void MainWindow::removeGraph(int index)
 {
-//    int currentIndex = (index == -1) ? ui->tabPlot->currentIndex() : index;
-//
-//    if (currentIndex < 0 || currentIndex >= m_plotTabs.size()) {
-//        return;
-//    }
-//
-//    QString graphName = m_plotTabs[currentIndex].name;
-//    QMessageBox msgBox(this);
-//    msgBox.setWindowTitle("Подтверждение удаления");
-//    msgBox.setText(QString("Вы действительно хотите удалить график '%1'?").arg(graphName));
-//    QPushButton* yesButton = msgBox.addButton("Да", QMessageBox::AcceptRole);
-//    QPushButton* noButton = msgBox.addButton("Нет", QMessageBox::RejectRole);
-//    msgBox.setDefaultButton(yesButton);
-//    msgBox.exec();
-//
-//    if (msgBox.clickedButton() == yesButton) {
-//        ui->tabPlot->removeTab(currentIndex);
-//
-//        int settingsTabIndex = -1;
-//        for (int i = 0; i < ui->tabPlotSettings->count(); ++i) {
-//            if (ui->tabPlotSettings->widget(i) == m_plotTabs[currentIndex].settingsTab) {
-//                settingsTabIndex = i;
-//                break;
-//            }
-//        }
-//
-//        if (settingsTabIndex >= 0) {
-//            ui->tabPlotSettings->removeTab(settingsTabIndex);
-//        }
-//
-//        m_plotTabs.removeAt(currentIndex);
-//    }
+    int currentIndex = (index == -1) ? ui->tabPlot->currentIndex() : index;
+
+    if (currentIndex < 0 || currentIndex >= m_plotTabs.size()) {
+        return;
+    }
+
+    QString graphName = m_plotTabs[currentIndex].name;
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Подтверждение удаления");
+    msgBox.setText(QString("Вы действительно хотите удалить график '%1'?").arg(graphName));
+    QPushButton* yesButton = msgBox.addButton("Да", QMessageBox::AcceptRole);
+    QPushButton* noButton = msgBox.addButton("Нет", QMessageBox::RejectRole);
+    msgBox.setDefaultButton(yesButton);
+    msgBox.exec();
+
+    if (msgBox.clickedButton() == yesButton) {
+        ui->tabPlot->removeTab(currentIndex);
+
+        int settingsTabIndex = -1;
+        for (int i = 0; i < ui->tabPlotSettings->count(); ++i) {
+            if (ui->tabPlotSettings->widget(i) == m_plotTabs[currentIndex].settingsTab) {
+                settingsTabIndex = i;
+                break;
+            }
+        }
+
+        if (settingsTabIndex >= 0) {
+            ui->tabPlotSettings->removeTab(settingsTabIndex);
+        }
+
+        m_plotTabs.removeAt(currentIndex);
+    }
 }
 
 void MainWindow::on_import_CSV_triggered()
@@ -648,4 +651,204 @@ void MainWindow::on_import_CSV_triggered()
             return;
         }
     }
+}
+
+void MainWindow::addTextBlockToReport()
+{
+    QVBoxLayout* layout = ui->reportContentLayout;
+    if (!layout) {
+        return;
+    }
+    
+    QWidget* contentWidget = ui->reportContentWidget;
+
+    QTextEdit* textEdit = new QTextEdit(contentWidget);
+    textEdit->setPlaceholderText("Введите текст...");
+    textEdit->setMinimumHeight(100);
+    textEdit->setMaximumHeight(200);
+
+    QFrame* frame = new QFrame(contentWidget);
+    frame->setFrameStyle(QFrame::Box | QFrame::Raised);
+    frame->setLineWidth(1);
+    QVBoxLayout* frameLayout = new QVBoxLayout(frame);
+    frameLayout->setContentsMargins(5, 5, 5, 5);
+    frameLayout->addWidget(textEdit);
+
+    QHBoxLayout* buttonsLayout = new QHBoxLayout();
+    buttonsLayout->setContentsMargins(0, 0, 0, 0);
+    
+    QPushButton* upButton = new QPushButton("↑", frame);
+    upButton->setMaximumWidth(40);
+    QPushButton* downButton = new QPushButton("↓", frame);
+    downButton->setMaximumWidth(40);
+    QPushButton* removeButton = new QPushButton("Удалить", frame);
+    
+    buttonsLayout->addWidget(upButton);
+    buttonsLayout->addWidget(downButton);
+    buttonsLayout->addWidget(removeButton);
+    buttonsLayout->addStretch();
+    
+    frameLayout->addLayout(buttonsLayout);
+    
+    connect(upButton, &QPushButton::clicked, this, [frame, layout]() {
+        int index = layout->indexOf(frame);
+        if (index > 0) {
+            layout->removeWidget(frame);
+            layout->insertWidget(index - 1, frame);
+        }
+    });
+    
+    connect(downButton, &QPushButton::clicked, this, [frame, layout]() {
+        int index = layout->indexOf(frame);
+        if (index >= 0 && index < layout->count() - 1) {
+            layout->removeWidget(frame);
+            layout->insertWidget(index + 1, frame);
+        }
+    });
+    
+    connect(removeButton, &QPushButton::clicked, this, [frame, layout]() {
+        layout->removeWidget(frame);
+        frame->deleteLater();
+    });
+
+    layout->addWidget(frame);
+}
+
+void MainWindow::addTableBlockToReport()
+{
+    QVBoxLayout* layout = ui->reportContentLayout;
+    if (!layout) {
+        return;
+    }
+    
+    QWidget* contentWidget = ui->reportContentWidget;
+
+    QTableView* tableView = new QTableView(contentWidget);
+    tableView->setModel(m_tableModel);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->setMinimumHeight(200);
+    tableView->setMaximumHeight(400);
+
+    QFrame* frame = new QFrame(contentWidget);
+    frame->setFrameStyle(QFrame::Box | QFrame::Raised);
+    frame->setLineWidth(1);
+    QVBoxLayout* frameLayout = new QVBoxLayout(frame);
+    frameLayout->setContentsMargins(5, 5, 5, 5);
+    frameLayout->addWidget(tableView);
+
+    QHBoxLayout* buttonsLayout = new QHBoxLayout();
+    buttonsLayout->setContentsMargins(0, 0, 0, 0);
+    
+    QPushButton* upButton = new QPushButton("↑", frame);
+    upButton->setMaximumWidth(40);
+    QPushButton* downButton = new QPushButton("↓", frame);
+    downButton->setMaximumWidth(40);
+    QPushButton* removeButton = new QPushButton("Удалить", frame);
+    
+    buttonsLayout->addWidget(upButton);
+    buttonsLayout->addWidget(downButton);
+    buttonsLayout->addWidget(removeButton);
+    buttonsLayout->addStretch();
+    
+    frameLayout->addLayout(buttonsLayout);
+    
+    connect(upButton, &QPushButton::clicked, this, [frame, layout]() {
+        int index = layout->indexOf(frame);
+        if (index > 0) {
+            layout->removeWidget(frame);
+            layout->insertWidget(index - 1, frame);
+        }
+    });
+    
+    connect(downButton, &QPushButton::clicked, this, [frame, layout]() {
+        int index = layout->indexOf(frame);
+        if (index >= 0 && index < layout->count() - 1) {
+            layout->removeWidget(frame);
+            layout->insertWidget(index + 1, frame);
+        }
+    });
+    
+    connect(removeButton, &QPushButton::clicked, this, [frame, layout]() {
+        layout->removeWidget(frame);
+        frame->deleteLater();
+    });
+
+    layout->addWidget(frame);
+}
+
+void MainWindow::addPlotBlockToReport()
+{
+    QVBoxLayout* layout = ui->reportContentLayout;
+    if (!layout) {
+        return;
+    }
+    
+    QWidget* contentWidget = ui->reportContentWidget;
+
+    int currentIndex = ui->tabPlot->currentIndex();
+    if (currentIndex < 0 || currentIndex >= m_plotTabs.size()) {
+        QMessageBox::information(this, "Информация", "Нет графиков для добавления в отчет");
+        return;
+    }
+
+    // Получаем текущий график
+    QCustomPlot* sourcePlot = m_plotTabs[currentIndex].plot;
+
+    // Копируем график через pixmap (простой способ)
+    QPixmap pixmap = sourcePlot->toPixmap();
+    QLabel* plotLabel = new QLabel(contentWidget);
+    plotLabel->setPixmap(pixmap);
+    plotLabel->setScaledContents(true);
+    plotLabel->setMinimumHeight(300);
+    plotLabel->setMaximumHeight(500);
+    plotLabel->setAlignment(Qt::AlignCenter);
+
+    // Добавляем рамку вокруг блока
+    QFrame* frame = new QFrame(contentWidget);
+    frame->setFrameStyle(QFrame::Box | QFrame::Raised);
+    frame->setLineWidth(1);
+    QVBoxLayout* frameLayout = new QVBoxLayout(frame);
+    frameLayout->setContentsMargins(5, 5, 5, 5);
+    
+    frameLayout->addWidget(plotLabel);
+
+    // Добавляем кнопки управления (Вверх, Вниз, Удалить)
+    QHBoxLayout* buttonsLayout = new QHBoxLayout();
+    buttonsLayout->setContentsMargins(0, 0, 0, 0);
+    
+    QPushButton* upButton = new QPushButton("↑", frame);
+    upButton->setMaximumWidth(40);
+    QPushButton* downButton = new QPushButton("↓", frame);
+    downButton->setMaximumWidth(40);
+    QPushButton* removeButton = new QPushButton("Удалить", frame);
+    
+    buttonsLayout->addWidget(upButton);
+    buttonsLayout->addWidget(downButton);
+    buttonsLayout->addWidget(removeButton);
+    buttonsLayout->addStretch();
+    
+    frameLayout->addLayout(buttonsLayout);
+    
+    connect(upButton, &QPushButton::clicked, this, [frame, layout]() {
+        int index = layout->indexOf(frame);
+        if (index > 0) {
+            layout->removeWidget(frame);
+            layout->insertWidget(index - 1, frame);
+        }
+    });
+    
+    connect(downButton, &QPushButton::clicked, this, [frame, layout]() {
+        int index = layout->indexOf(frame);
+        if (index >= 0 && index < layout->count() - 1) {
+            layout->removeWidget(frame);
+            layout->insertWidget(index + 1, frame);
+        }
+    });
+    
+    connect(removeButton, &QPushButton::clicked, this, [frame, layout]() {
+        layout->removeWidget(frame);
+        frame->deleteLater();
+    });
+
+    layout->addWidget(frame);
 }
