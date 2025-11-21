@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find architecture property for qcustomplot
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(PROJECT_ARCH_TARGET "amd64")    # x64
-elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)     
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(PROJECT_ARCH_TARGET "i386")     # x86
 else()
     message(FATAL_ERROR "Unknown architecture, CMake will exit.")

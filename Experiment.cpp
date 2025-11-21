@@ -20,7 +20,8 @@ Experiment *Experiment::get_instance(std::vector<Variable> variables, std::vecto
 
 void Experiment::destroy_instance()
 {
-    delete instance;
+    if(instance != nullptr)
+        delete instance;
     instance = nullptr;
 }
 
