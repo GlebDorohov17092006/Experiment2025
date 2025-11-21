@@ -44,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->add_graph, &QAction::triggered, this, [this]() { addDynamicPlotTab("График"); });
     connect(ui->add_histogram, &QAction::triggered, this, [this]() { addDynamicPlotTab("Гистограмма"); });
     connect(ui->add_scatterplot, &QAction::triggered, this, [this]() { addDynamicPlotTab("Скаттерплот"); });
-    connect(ui->add_heatmap, &QAction::triggered, this, [this]() { addDynamicPlotTab("Хитмап"); });
+    connect(ui->add_heatmap, &QAction::triggered, this, [this]() { addDynamicPlotTab("Тепловая карта"); });
     connect(ui->delete_plot, &QAction::triggered, this, [this]() { removeGraph(); });
 
     // Подключаем сигнал изменения данных в таблице для обновления heatmap графиков
@@ -61,7 +61,7 @@ MainWindow::MainWindow(QWidget *parent)
     addDynamicPlotTab("График");
     addDynamicPlotTab("Гистограмма");
     addDynamicPlotTab("Скаттерплот");
-    addDynamicPlotTab("Хитмап");
+    addDynamicPlotTab("Тепловая карта");
 }
 
 MainWindow::~MainWindow()
@@ -658,7 +658,7 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     m_plotTabs.append(plotTab);
     
     // Если это heatmap, настраиваем сигналы и отрисовываем график
-    if (plotType == "Хитмап") {
+    if (plotType == "Тепловая карта") {
         HeatmapSettingsWidget* heatmapWidget = qobject_cast<HeatmapSettingsWidget*>(settingsWidget);
         if (heatmapWidget) {
             // Подключаем сигнал изменения выбора осей
@@ -759,7 +759,7 @@ void MainWindow::drawHeatmap(int plotTabIndex)
     }
     
     PlotTab& plotTab = m_plotTabs[plotTabIndex];
-    if (plotTab.type != "Хитмап") {
+    if (plotTab.type != "Тепловая карта") {
         return;
     }
     
@@ -897,7 +897,7 @@ void MainWindow::drawHeatmap(int plotTabIndex)
 
         QCPGraph* pointGraph = plotTab.plot->addGraph();
         pointGraph->setLineStyle(QCPGraph::lsNone);
-        pointGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle,
+        pointGraph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssSquare,
                                                     pen,
                                                     QBrush(fillColor),
                                                     radius));
@@ -930,7 +930,7 @@ void MainWindow::updateHeatmapGraphs()
 {
     // Обновляем все heatmap графики
     for (int i = 0; i < m_plotTabs.size(); ++i) {
-        if (m_plotTabs[i].type == "Хитмап") {
+        if (m_plotTabs[i].type == "Тепловая карта") {
             drawHeatmap(i);
         }
     }

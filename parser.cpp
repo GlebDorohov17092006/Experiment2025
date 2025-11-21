@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "AbsoluteInstrument.h"
 #include "RelativeInstrument.h"
+#include "Experiment.h"
 using json = nlohmann::json;
 
 std::vector<Variable> parser_csv(const std::string& filename)
@@ -113,6 +114,15 @@ std::vector<Variable> parser(const std::string& filename_csv, const std::string&
 {
     std::vector<Variable> variables =  parser_csv(filename_csv);
     parser_json(variables, filename_json);
+
+    // Получаем или создаем глобальный эксперимент
+    Experiment* experiment = Experiment::get_instance({}, {});
+    
+    // Добавляем все переменные в глобальный эксперимент
+    for (const Variable& variable : variables)
+    {
+        experiment->add_variable(variable);
+    }
 
     return variables;
 

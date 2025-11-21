@@ -12,7 +12,7 @@ BaseSettingsWidget* BaseSettingsWidget::create(const QString& plotType, QWidget*
         return new HistogramSettingsWidget(parent);
     } else if (plotType == "Скаттерплот") {
         return new ScatterSettingsWidget(parent);
-    } else if (plotType == "Хитмап") {
+    } else if (plotType == "Тепловая карта") {
         return new HeatmapSettingsWidget(parent);
     }
     return nullptr;
