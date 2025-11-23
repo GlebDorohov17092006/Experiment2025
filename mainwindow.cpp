@@ -252,7 +252,63 @@ QString MainWindow::getColumnTag(int columnIndex)
 
 void MainWindow::saveReport()
 {
+    if (m_reportBlocks.isEmpty()) {
+        QMessageBox::information(this, "Информация", "Нет блоков для сохранения в отчете");
+        return;
+    }
 
+    QString fileName = QFileDialog::getSaveFileName(
+        this,
+        "Сохранить отчет",
+        "",
+        "PDF Files (*.pdf);;All Files (*)"
+        );
+
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    if (!fileName.endsWith(".pdf", Qt::CaseInsensitive)) {
+        fileName += ".pdf";
+    }
+
+    QTextDocument document;
+    QTextCursor cursor(&document);
+
+    QVBoxLayout* layout = ui->reportContentLayout;
+
+    QHash<QFrame*, ReportBlock*> frameToBlock;
+    for (ReportBlock* block : m_reportBlocks) {
+        if (block && block->getFrame()) {
+            frameToBlock[block->getFrame()] = block;
+        }
+    }
+
+    for (int i = 0; i < layout->count(); ++i) {
+        QLayoutItem* item = layout->itemAt(i);
+
+        QWidget* widget = item->widget();
+
+        QFrame* frame = qobject_cast<QFrame*>(widget);
+
+        ReportBlock* block = frameToBlock.value(frame, nullptr);
+
+        block->exportToPDF(&document, cursor);
+
+        if (i < layout->count() - 1) {
+            cursor.insertBlock();
+        }
+    }
+
+    QPrinter printer(QPrinter::HighResolution);
+    printer.setOutputFormat(QPrinter::PdfFormat);
+    printer.setOutputFileName(fileName);
+    printer.setPageSize(QPageSize::A4);
+    printer.setPageMargins(QMarginsF(10, 10, 10, 10), QPageLayout::Millimeter);
+
+    document.print(&printer);
+
+    QMessageBox::information(this, "", QString("Отчет успешно сохранен в файл:\n%1").arg(fileName));
 }
 
 void MainWindow::updateVariableInstrumentsTable()
