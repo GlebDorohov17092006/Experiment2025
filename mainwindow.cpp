@@ -12,6 +12,9 @@
 #include "AbsoluteInstrument.h"
 #include "RelativeInstrument.h"
 #include "CombinedInstrument.h"
+#include "TextReportBlock.h"
+#include "TableReportBlock.h"
+#include "PlotReportBlock.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -32,12 +35,16 @@
 #include <QPushButton>
 #include <QFont>
 #include <QTabBar>
-#include <algorithm>
 #include <QFileDialog>
 #include <QTextEdit>
 #include <QScrollArea>
 #include <QLabel>
 #include <QFrame>
+#include <QTextDocument>
+#include <QTextCursor>
+#include <QTextDocumentWriter>
+#include <QPrinter>
+#include <QPrintDialog>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -662,56 +669,13 @@ void MainWindow::addTextBlockToReport()
     
     QWidget* contentWidget = ui->reportContentWidget;
 
-    QTextEdit* textEdit = new QTextEdit(contentWidget);
-    textEdit->setPlaceholderText("Введите текст...");
-    textEdit->setMinimumHeight(100);
-    textEdit->setMaximumHeight(200);
-
-    QFrame* frame = new QFrame(contentWidget);
-    frame->setFrameStyle(QFrame::Box | QFrame::Raised);
-    frame->setLineWidth(1);
-    QVBoxLayout* frameLayout = new QVBoxLayout(frame);
-    frameLayout->setContentsMargins(5, 5, 5, 5);
-    frameLayout->addWidget(textEdit);
-
-    QHBoxLayout* buttonsLayout = new QHBoxLayout();
-    buttonsLayout->setContentsMargins(0, 0, 0, 0);
+    TextReportBlock* block = new TextReportBlock(contentWidget);
+    QFrame* frame = block->createWidget(contentWidget, layout);
+    m_reportBlocks.append(block);
     
-    QPushButton* upButton = new QPushButton("↑", frame);
-    upButton->setMaximumWidth(40);
-    QPushButton* downButton = new QPushButton("↓", frame);
-    downButton->setMaximumWidth(40);
-    QPushButton* removeButton = new QPushButton("Удалить", frame);
-    
-    buttonsLayout->addWidget(upButton);
-    buttonsLayout->addWidget(downButton);
-    buttonsLayout->addWidget(removeButton);
-    buttonsLayout->addStretch();
-    
-    frameLayout->addLayout(buttonsLayout);
-    
-    connect(upButton, &QPushButton::clicked, this, [frame, layout]() {
-        int index = layout->indexOf(frame);
-        if (index > 0) {
-            layout->removeWidget(frame);
-            layout->insertWidget(index - 1, frame);
-        }
-    });
-    
-    connect(downButton, &QPushButton::clicked, this, [frame, layout]() {
-        int index = layout->indexOf(frame);
-        if (index >= 0 && index < layout->count() - 1) {
-            layout->removeWidget(frame);
-            layout->insertWidget(index + 1, frame);
-        }
-    });
-    
-    connect(removeButton, &QPushButton::clicked, this, [frame, layout]() {
-        layout->removeWidget(frame);
-        frame->deleteLater();
-    });
-
     layout->addWidget(frame);
+    
+    connectReportBlockDeletion(frame, block);
 }
 
 void MainWindow::addTableBlockToReport()
@@ -723,57 +687,13 @@ void MainWindow::addTableBlockToReport()
     
     QWidget* contentWidget = ui->reportContentWidget;
 
-    QTableView* tableView = new QTableView(contentWidget);
-    tableView->setModel(m_tableModel);
-    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    tableView->setMinimumHeight(200);
-    tableView->setMaximumHeight(400);
-
-    QFrame* frame = new QFrame(contentWidget);
-    frame->setFrameStyle(QFrame::Box | QFrame::Raised);
-    frame->setLineWidth(1);
-    QVBoxLayout* frameLayout = new QVBoxLayout(frame);
-    frameLayout->setContentsMargins(5, 5, 5, 5);
-    frameLayout->addWidget(tableView);
-
-    QHBoxLayout* buttonsLayout = new QHBoxLayout();
-    buttonsLayout->setContentsMargins(0, 0, 0, 0);
+    TableReportBlock* block = new TableReportBlock(m_tableModel, contentWidget);
+    QFrame* frame = block->createWidget(contentWidget, layout);
+    m_reportBlocks.append(block);
     
-    QPushButton* upButton = new QPushButton("↑", frame);
-    upButton->setMaximumWidth(40);
-    QPushButton* downButton = new QPushButton("↓", frame);
-    downButton->setMaximumWidth(40);
-    QPushButton* removeButton = new QPushButton("Удалить", frame);
-    
-    buttonsLayout->addWidget(upButton);
-    buttonsLayout->addWidget(downButton);
-    buttonsLayout->addWidget(removeButton);
-    buttonsLayout->addStretch();
-    
-    frameLayout->addLayout(buttonsLayout);
-    
-    connect(upButton, &QPushButton::clicked, this, [frame, layout]() {
-        int index = layout->indexOf(frame);
-        if (index > 0) {
-            layout->removeWidget(frame);
-            layout->insertWidget(index - 1, frame);
-        }
-    });
-    
-    connect(downButton, &QPushButton::clicked, this, [frame, layout]() {
-        int index = layout->indexOf(frame);
-        if (index >= 0 && index < layout->count() - 1) {
-            layout->removeWidget(frame);
-            layout->insertWidget(index + 1, frame);
-        }
-    });
-    
-    connect(removeButton, &QPushButton::clicked, this, [frame, layout]() {
-        layout->removeWidget(frame);
-        frame->deleteLater();
-    });
-
     layout->addWidget(frame);
+    
+    connectReportBlockDeletion(frame, block);
 }
 
 void MainWindow::addPlotBlockToReport()
@@ -791,64 +711,25 @@ void MainWindow::addPlotBlockToReport()
         return;
     }
 
-    // Получаем текущий график
     QCustomPlot* sourcePlot = m_plotTabs[currentIndex].plot;
 
-    // Копируем график через pixmap (простой способ)
-    QPixmap pixmap = sourcePlot->toPixmap();
-    QLabel* plotLabel = new QLabel(contentWidget);
-    plotLabel->setPixmap(pixmap);
-    plotLabel->setScaledContents(true);
-    plotLabel->setMinimumHeight(300);
-    plotLabel->setMaximumHeight(500);
-    plotLabel->setAlignment(Qt::AlignCenter);
+    int fixedSize = 400;
+    QPixmap pixmap = sourcePlot->toPixmap(fixedSize, fixedSize);
 
-    // Добавляем рамку вокруг блока
-    QFrame* frame = new QFrame(contentWidget);
-    frame->setFrameStyle(QFrame::Box | QFrame::Raised);
-    frame->setLineWidth(1);
-    QVBoxLayout* frameLayout = new QVBoxLayout(frame);
-    frameLayout->setContentsMargins(5, 5, 5, 5);
+    PlotReportBlock* block = new PlotReportBlock(pixmap, contentWidget);
+    QFrame* frame = block->createWidget(contentWidget, layout);
+    m_reportBlocks.append(block);
     
-    frameLayout->addWidget(plotLabel);
-
-    // Добавляем кнопки управления (Вверх, Вниз, Удалить)
-    QHBoxLayout* buttonsLayout = new QHBoxLayout();
-    buttonsLayout->setContentsMargins(0, 0, 0, 0);
-    
-    QPushButton* upButton = new QPushButton("↑", frame);
-    upButton->setMaximumWidth(40);
-    QPushButton* downButton = new QPushButton("↓", frame);
-    downButton->setMaximumWidth(40);
-    QPushButton* removeButton = new QPushButton("Удалить", frame);
-    
-    buttonsLayout->addWidget(upButton);
-    buttonsLayout->addWidget(downButton);
-    buttonsLayout->addWidget(removeButton);
-    buttonsLayout->addStretch();
-    
-    frameLayout->addLayout(buttonsLayout);
-    
-    connect(upButton, &QPushButton::clicked, this, [frame, layout]() {
-        int index = layout->indexOf(frame);
-        if (index > 0) {
-            layout->removeWidget(frame);
-            layout->insertWidget(index - 1, frame);
-        }
-    });
-    
-    connect(downButton, &QPushButton::clicked, this, [frame, layout]() {
-        int index = layout->indexOf(frame);
-        if (index >= 0 && index < layout->count() - 1) {
-            layout->removeWidget(frame);
-            layout->insertWidget(index + 1, frame);
-        }
-    });
-    
-    connect(removeButton, &QPushButton::clicked, this, [frame, layout]() {
-        layout->removeWidget(frame);
-        frame->deleteLater();
-    });
-
     layout->addWidget(frame);
+    
+    connectReportBlockDeletion(frame, block);
+}
+
+void MainWindow::connectReportBlockDeletion(QFrame* frame, ReportBlock* block)
+{
+    // Сигнал удаления для очистки списка и освобождения памяти
+    connect(frame, &QFrame::destroyed, this, [this, block]() {
+        m_reportBlocks.removeAll(block);
+        delete block;
+    });
 }
