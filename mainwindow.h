@@ -12,6 +12,8 @@ class Instrument;
 class Variable;
 class QCustomPlot;
 class QTableWidget;
+class QFrame;
+class ReportBlock;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -49,6 +51,7 @@ private slots:
     void on_import_CSV_triggered();
 
 private:
+    void connectReportBlockDeletion(QFrame* frame, ReportBlock* block);
     void setColumnTag(int columnIndex, const QString& tag);
     QString getColumnTag(int columnIndex);
     QString getColumnName(int columnIndex);
@@ -76,5 +79,6 @@ private:
     void updateVariableInstrumentsTable();
     QMap<int, QString> m_columnTags; // Хранилище тегов столбцов
     QList<PlotTab> m_plotTabs; // Список динамически добавленных графиков
+    QList<ReportBlock*> m_reportBlocks; // Список блоков отчета
 };
 #endif // MAINWINDOW_H
