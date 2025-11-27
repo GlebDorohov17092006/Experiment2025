@@ -5,9 +5,9 @@
 Variable::Variable(std::vector<double> measurements, const std::string &name_tables,
                    const std::string &name_calculated, Instrument *instrument)
     : measurements(measurements),
-      name_tables(name_tables),
-      name_calculated(name_calculated),
-      instrument(instrument)
+    name_tables(name_tables),
+    name_calculated(name_calculated),
+    instrument(instrument)
 {
 }
 
@@ -28,6 +28,11 @@ double Variable::get_measurement(size_t index) const
         return 0.0;
     }
     return measurements[index];
+}
+
+std::vector<double> Variable::get_measurements() const
+{
+    return measurements;
 }
 
 size_t Variable::get_measurements_count() const

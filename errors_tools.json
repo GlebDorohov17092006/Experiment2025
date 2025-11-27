@@ -1,0 +1,16 @@
+{
+  "Instruments" : {
+    "Voltmeter" : {
+      "type" : "Relative",
+      "error" : 0.050
+    },
+    "Ammeter" : {
+      "type" : "Absolute",
+      "error" : 0.001
+    }
+  },
+  "Variables" : {
+    "U" : "Voltmeter",
+    "I" : "Ammeter"
+  }
+}
