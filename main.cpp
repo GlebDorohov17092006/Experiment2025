@@ -11,7 +11,9 @@ int main(int argc, char *argv[])
     MainWindow w;
 
     std::vector<Variable> variables = parser("../../electricChain.csv", "../../errors_tools.json");
-    Experiment *experiment = Experiment::get_instance(variables, {});
+    Experiment::get_instance(variables, {});
+
+
 
     w.show();
     return a.exec();

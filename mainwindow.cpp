@@ -100,6 +100,29 @@ MainWindow::MainWindow(QWidget *parent)
     addDynamicPlotTab("График");
     addDynamicPlotTab("Гистограмма");
     addDynamicPlotTab("Скаттерплот");
+
+    //Парсинг по умолчанию
+    std::vector<Variable> variables = parser("../../electricChain.csv", "../../errors_tools.json");
+    Experiment::get_instance(variables, {});
+
+    //Отображение графиков
+    if(m_plotTabs.size() >= 2)
+    {
+        PlotTab plot = m_plotTabs[0];
+
+        QVector<double> xQvector = QVector<double>(variables[0].get_measurements().begin(), variables[0].get_measurements().end());
+        QVector<double> yQvector = QVector<double>(variables[1].get_measurements().begin(), variables[1].get_measurements().end());
+
+        plot.plot->addGraph();
+        // Отключаем адаптивную выборку для правильного отображения ломаной линии
+        plot.plot->graph()->setAdaptiveSampling(false);
+        // Устанавливаем стиль линии как ломаную
+        plot.plot->graph()->setLineStyle(QCPGraph::lsLine);
+        plot.plot->graph()->setData(xQvector, yQvector);
+
+        plot.plot->rescaleAxes();
+        plot.plot->replot();
+    }
 }
 
 MainWindow::~MainWindow()
