@@ -1,5 +1,6 @@
 #include "Variable.h"
 #include <stdexcept>
+#include <iostream>
 
 Variable::Variable(std::vector<double> measurements, const std::string &name_tables,
                    const std::string &name_calculated, Instrument *instrument)
@@ -24,9 +25,14 @@ double Variable::get_measurement(size_t index) const
 {
     if (index >= measurements.size())
     {
-        throw std::out_of_range("The index goes beyond the bounds of the measurements array");
+        return 0.0;
     }
     return measurements[index];
+}
+
+std::vector<double> Variable::get_measurements() const
+{
+    return measurements;
 }
 
 size_t Variable::get_measurements_count() const
@@ -48,7 +54,7 @@ void Variable::set_measurement(size_t index, double value)
 {
     if (index >= measurements.size())
     {
-        throw std::out_of_range("The index goes beyond the bounds of the measurements array");
+        return;
     }
     measurements[index] = value;
 }
@@ -62,7 +68,7 @@ std::string Variable::get_name_instrument() const
 {
     if (instrument == nullptr)
     {
-        throw std::runtime_error("Instrument pointer is null");
+        return "(нет инструмента)";
     }
     return instrument->get_name();
 }
@@ -71,8 +77,9 @@ double Variable::get_error_instrument(size_t index, double value) const
 {
     if (instrument == nullptr)
     {
-        throw std::runtime_error("Instrument pointer is null");
+        return 0.0;
     }
+
     return instrument->get_error(index, value);
 }
 
@@ -80,7 +87,7 @@ void Variable::set_name_instrument(const std::string &name)
 {
     if (instrument == nullptr)
     {
-        throw std::runtime_error("Instrument pointer is null");
+        return;
     }
     instrument->set_name(name);
 }
@@ -89,7 +96,7 @@ void Variable::set_error_instrument(size_t index, double error)
 {
     if (instrument == nullptr)
     {
-        throw std::runtime_error("Instrument pointer is null");
+        return;
     }
     instrument->set_error(index, error);
 }
@@ -103,7 +110,7 @@ void Variable::remove_measurement(size_t index)
 {
     if (index >= measurements.size())
     {
-        throw std::out_of_range("The index goes beyond the bounds of the measurements array");
+        return;
     }
     measurements.erase(measurements.begin() + static_cast<std::ptrdiff_t>(index));
 }

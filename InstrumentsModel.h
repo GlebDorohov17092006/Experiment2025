@@ -23,6 +23,9 @@ public:
     void setInstruments(std::vector<std::shared_ptr<Instrument>>* instruments);
     void refreshData();
 
+signals:
+    void instrumentNameChanged(); // Добавляем сигнал
+
 private:
     std::vector<std::shared_ptr<Instrument>>* m_instruments;
 };

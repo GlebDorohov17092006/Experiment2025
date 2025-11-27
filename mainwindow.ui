@@ -61,7 +61,7 @@
               <property name="orientation">
                <enum>Qt::Vertical</enum>
               </property>
-              <widget class="QTableView" name="variableInstrumentsTable">
+              <widget class="QTableWidget" name="variableInstrumentsTable">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
@@ -74,8 +74,28 @@
                <property name="horizontalScrollBarPolicy">
                 <enum>Qt::ScrollBarAsNeeded</enum>
                </property>
+               <property name="rowCount">
+                <number>1</number>
+               </property>
+               <property name="columnCount">
+                <number>0</number>
+               </property>
+               <attribute name="horizontalHeaderStretchLastSection">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="verticalHeaderVisible">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="verticalHeaderDefaultSectionSize">
+                <number>25</number>
+               </attribute>
+               <row>
+                <property name="text">
+                 <string>Инструмент</string>
+                </property>
+               </row>
               </widget>
-              <widget class="QTableView" name="tableWidget">
+              <widget class="QTableView" name="tableViewMeasurements">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                  <horstretch>0</horstretch>
@@ -145,7 +165,7 @@
            </attribute>
            <layout class="QGridLayout" name="gridLayout_5">
             <item row="1" column="0">
-             <widget class="QPushButton" name="addInstrument">
+             <widget class="QPushButton" name="pushButton">
               <property name="font">
                <font>
                 <bold>false</bold>
@@ -157,7 +177,7 @@
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QPushButton" name="deleteInstrument">
+             <widget class="QPushButton" name="pushButton_2">
               <property name="font">
                <font>
                 <bold>false</bold>
@@ -169,12 +189,30 @@
              </widget>
             </item>
             <item row="0" column="0" colspan="2">
-             <widget class="QTableView" name="instrumentsTable">
+             <widget class="QTableView" name="tableViewInstruments">
               <property name="font">
                <font>
                 <bold>false</bold>
                </font>
               </property>
+              <attribute name="horizontalHeaderVisible">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="horizontalHeaderCascadingSectionResizes">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="horizontalHeaderHighlightSections">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+               <bool>false</bool>
+              </attribute>
+              <attribute name="horizontalHeaderStretchLastSection">
+               <bool>true</bool>
+              </attribute>
+              <attribute name="verticalHeaderVisible">
+               <bool>false</bool>
+              </attribute>
              </widget>
             </item>
            </layout>
@@ -365,6 +403,14 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QCustomPlot</class>
+   <extends>QWidget</extends>
+   <header>qcustomplot.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resources.qrc"/>
  </resources>
@@ -434,7 +480,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>addInstrument</sender>
+   <sender>pushButton</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
    <slot>addInstrument()</slot>
@@ -450,7 +496,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>deleteInstrument</sender>
+   <sender>pushButton_2</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
    <slot>removeInstrument()</slot>
@@ -546,22 +592,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>instrumentsTable</sender>
-   <signal>cellChanged(int,int)</signal>
-   <receiver>MainWindow</receiver>
-   <slot>updateInstrumentTexts()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>20</x>
-     <y>20</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>addTextBlockButton</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
@@ -609,6 +639,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>variableInstrumentsTable</sender>
+   <signal>itemChanged(QTableWidgetItem*)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onInstrumentChanged(QTableWidgetItem*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>addColumn()</slot>
@@ -622,9 +668,9 @@
   <slot>onPlotTabChanged(int)</slot>
   <slot>removeGraph(int)</slot>
   <slot>onInstrumentCellDoubleClicked(int,int)</slot>
-  <slot>updateInstrumentTexts()</slot>
   <slot>addTextBlockToReport()</slot>
   <slot>addTableBlockToReport()</slot>
   <slot>addPlotBlockToReport()</slot>
+  <slot>onInstrumentChanged(QTableWidgetItem*)</slot>
  </slots>
 </ui>
