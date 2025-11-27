@@ -56,12 +56,18 @@ QVariant InstrumentsModel::data(const QModelIndex &index, int role) const
         case 2:
             if (instrument->get_name() == "(нет инструмента)") {
                 return "0.000";
-            } else if (auto absInstr = dynamic_cast<AbsoluteInstrument*>(instrument.get())) {
-                return QString::number(absInstr->get_error(0, 0), 'f', 3);
-            } else if (auto relInstr = dynamic_cast<RelativeInstrument*>(instrument.get())) {
-                return QString::number(relInstr->get_error(0, 1) * 100, 'f', 1) + "%";
+            } else {
+                try {
+                    if (auto absInstr = dynamic_cast<AbsoluteInstrument*>(instrument.get())) {
+                        return QString::number(absInstr->get_error(0, 0), 'f', 3);
+                    } else if (auto relInstr = dynamic_cast<RelativeInstrument*>(instrument.get())) {
+                        return QString::number(relInstr->get_error(0, 1) * 100, 'f', 1) + "%";
+                    }
+                } catch (const std::exception&) {
+                    return "0.000";
+                }
+                return "0.000";
             }
-            return "0.000";
         }
     }
 

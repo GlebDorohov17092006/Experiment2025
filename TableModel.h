@@ -18,7 +18,5 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 
     void refreshData();
-
-private:
-    Experiment* m_experiment;
+    void refreshColumn(int column); // Добавляем новый метод
 };
