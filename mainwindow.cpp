@@ -10,10 +10,7 @@
 #include "ComboItemDelegate.h"
 #include <QInputDialog>
 #include <QMessageBox>
-#include <QTableView>
-#include <QVBoxLayout>
 #include <QHeaderView>
-#include <QTableWidget>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -29,33 +26,13 @@ MainWindow::MainWindow(QWidget *parent)
     setupNoInstrument();
     createTestData();
 
-    // Заменяем QTableWidget на QTableView для измерений
-    QTableView* measurementsView = new QTableView();
-    measurementsView->setModel(m_tableModel);
-    measurementsView->setSelectionBehavior(QAbstractItemView::SelectItems);
-    measurementsView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    measurementsView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    // Настраиваем таблицу измерений
+    ui->tableViewMeasurements->setModel(m_tableModel);
+    ui->tableViewMeasurements->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
-    for (int i = 0; i < ui->splitter_2->count(); ++i) {
-        if (ui->splitter_2->widget(i) == ui->tableWidget) {
-            ui->splitter_2->replaceWidget(i, measurementsView);
-            ui->tableWidget->deleteLater();
-            break;
-        }
-    }
-
-    // Заменяем QTableWidget на QTableView для инструментов
-    QTableView* instrumentsView = new QTableView();
-    instrumentsView->setModel(m_instrumentsModel);
-    instrumentsView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    instrumentsView->verticalHeader()->setVisible(false);
-
-    QLayoutItem* item = ui->gridLayout_5->itemAtPosition(0, 0);
-    if (item && item->widget() == ui->instrumentsTable) {
-        ui->gridLayout_5->removeWidget(ui->instrumentsTable);
-        ui->gridLayout_5->addWidget(instrumentsView, 0, 0, 1, 2);
-        ui->instrumentsTable->deleteLater();
-    }
+    // Настраиваем таблицу инструментов
+    ui->tableViewInstruments->setModel(m_instrumentsModel);
+    ui->tableViewInstruments->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
     m_instrumentsModel->setInstruments(&m_instruments);
 
@@ -63,9 +40,9 @@ MainWindow::MainWindow(QWidget *parent)
     updateInstrumentDelegate();
     setupErrorTypeDelegate();
 
-    // Применяем делегаты к таблицам
+    // Применяем делегаты
     ui->variableInstrumentsTable->setItemDelegateForRow(0, m_instrumentDelegate);
-    instrumentsView->setItemDelegateForColumn(1, m_errorTypeDelegate);
+    ui->tableViewInstruments->setItemDelegateForColumn(1, m_errorTypeDelegate);
 
     // Подключаем сигналы
     connect(ui->addColumnButton, &QPushButton::clicked, this, &MainWindow::addColumn);
@@ -74,12 +51,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
     connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
     connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
-    connect(ui->variableInstrumentsTable, &QTableWidget::itemChanged,
-            this, &MainWindow::onInstrumentChanged);
+    connect(ui->variableInstrumentsTable, &QTableWidget::itemChanged, this, &MainWindow::onInstrumentChanged);
 
-    // Подключаем сигнал изменения названия инструмента
-    connect(m_instrumentsModel, &InstrumentsModel::instrumentNameChanged,
-            this, &MainWindow::updateInstrumentDelegate);
+    connect(m_instrumentsModel, &InstrumentsModel::instrumentNameChanged, this, &MainWindow::updateInstrumentDelegate);
 }
 
 void MainWindow::setupNoInstrument()
@@ -170,7 +144,6 @@ void MainWindow::createTestData()
     experiment->add_variable(currentVar);
 
     updateVariableInstrumentsTable();
-
     m_tableModel->refreshData();
 }
 
@@ -210,9 +183,7 @@ void MainWindow::updateVariableInstrumentsTable()
 void MainWindow::addColumn()
 {
     bool ok;
-    QString name = QInputDialog::getText(this, "Добавить переменную",
-                                        "Введите название переменной:",
-                                        QLineEdit::Normal, "Переменная", &ok);
+    QString name = QInputDialog::getText(this, "Добавить переменную", "Введите название переменной:", QLineEdit::Normal, "Переменная", &ok);
     if (!ok || name.isEmpty()) return;
 
     auto experiment = Experiment::get_instance();
@@ -276,16 +247,13 @@ void MainWindow::removeRow()
 void MainWindow::addInstrument()
 {
     bool ok;
-    QString name = QInputDialog::getText(this, "Название инструмента",
-                                        "Введите название инструмента:",
-                                        QLineEdit::Normal, "Новый прибор", &ok);
+    QString name = QInputDialog::getText(this, "Название инструмента", "Введите название инструмента:", QLineEdit::Normal, "Новый прибор", &ok);
     if (!ok || name.isEmpty()) return;
 
     std::shared_ptr<Instrument> instrument = std::make_shared<AbsoluteInstrument>(name.toStdString(), 0.0);
 
     m_instruments.push_back(instrument);
     m_instrumentsModel->refreshData();
-
     updateInstrumentDelegate();
 }
 
@@ -313,7 +281,6 @@ void MainWindow::removeInstrument()
 
     m_instruments.pop_back();
     m_instrumentsModel->refreshData();
-
     updateInstrumentDelegate();
     m_tableModel->refreshData();
 }

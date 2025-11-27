@@ -42,8 +42,7 @@ private:
     ComboItemDelegate* m_instrumentDelegate;
     ComboItemDelegate* m_errorTypeDelegate;
     std::vector<std::shared_ptr<Instrument>> m_instruments;
-    Experiment* m_experiment;
-    std::shared_ptr<Instrument> m_noInstrument; // Постоянный инструмент "Нет инструмента"
+    std::shared_ptr<Instrument> m_noInstrument;
 
     void createTestData();
     void updateVariableInstrumentsTable();
