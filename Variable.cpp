@@ -30,7 +30,7 @@ double Variable::get_measurement(size_t index) const
     return measurements[index];
 }
 
-std::vector<double> Variable::get_measurements() const
+std::vector<double>& Variable::get_measurements()
 {
     return measurements;
 }

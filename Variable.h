@@ -16,7 +16,7 @@ public:
     Variable(std::vector<double> measurements = {}, const std::string &name_tables = "",
              const std::string &name_calculated = "", Instrument *instrument = nullptr);
     double get_measurement(size_t index) const;
-    std::vector<double> get_measurements() const;
+    std::vector<double>& get_measurements();
     std::string get_name_tables() const;
     std::string get_name_calculated() const;
     double get_error_instrument(size_t index = 0, double value = 0.0) const;
