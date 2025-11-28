@@ -29,6 +29,11 @@ double Variable::get_measurement(size_t index) const
     return measurements[index];
 }
 
+std::vector<double>& Variable::get_measurements()
+{
+    return measurements;
+}
+
 size_t Variable::get_measurements_count() const
 {
     return measurements.size();
