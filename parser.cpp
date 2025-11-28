@@ -81,27 +81,50 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
         return;
     }
 
-    json instruments_data = json::parse(json_file);
+    json instruments_data;
+    try {
+        instruments_data = json::parse(json_file);
+    } catch (const json::parse_error& e) {
+        std::cerr << "JSON parse error: " << e.what() << std::endl;
+        json_file.close();
+        return;
+    }
 
     //For each column of table setting name of instrument and error
     for(Variable& curr_variable : variables)
     {
-        //Pulling out data of instrument
-        std::string variable_name = curr_variable.get_name_tables();
-        std::string name_instrument = instruments_data["Variables"][variable_name];
-        std::string type_of_error = instruments_data["Instruments"][name_instrument]["type"];
-        double value_of_error = instruments_data["Instruments"][name_instrument]["error"];
+        try {
+            std::string variable_name = curr_variable.get_name_tables();
+            
+            // Проверяем, существует ли переменная в JSON
+            if (!instruments_data["Variables"].contains(variable_name)) {
+                continue;
+            }
+            
+            std::string name_instrument = instruments_data["Variables"][variable_name];
+            
+            // Проверяем, существует ли инструмент в JSON
+            if (!instruments_data["Instruments"].contains(name_instrument)) {
+                continue;
+            }
+            
+            std::string type_of_error = instruments_data["Instruments"][name_instrument]["type"];
+            double value_of_error = instruments_data["Instruments"][name_instrument]["error"];
 
-        //Creating instrument and adding it to each variable
-        if(type_of_error == "Absolute")
-        {
-            AbsoluteInstrument instrument(name_instrument, value_of_error);
-            curr_variable.add_instrument(&instrument);
-        }
-        else
-        {
-            RelativeInstrument instrument(name_instrument, value_of_error);
-            curr_variable.add_instrument(&instrument);
+            //Creating instrument on heap and adding it to each variable
+            if(type_of_error == "Absolute")
+            {
+                AbsoluteInstrument* instrument = new AbsoluteInstrument(name_instrument, value_of_error);
+                curr_variable.add_instrument(instrument);
+            }
+            else
+            {
+                RelativeInstrument* instrument = new RelativeInstrument(name_instrument, value_of_error);
+                curr_variable.add_instrument(instrument);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error processing variable: " << e.what() << std::endl;
+            continue;
         }
     }
 
