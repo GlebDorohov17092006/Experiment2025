@@ -701,9 +701,48 @@ void MainWindow::on_import_CSV_triggered()
             }
 
             //Parsing files
-            auto variables = parser(csvFile.toStdString(), jsonFile.toStdString());
+            // Обрабатываем события UI, чтобы приложение не зависало
+            QApplication::processEvents();
+            
+            std::vector<Variable> variables;
+            try {
+                variables = parser(csvFile.toStdString(), jsonFile.toStdString());
+            } catch (const std::exception& e) {
+                QMessageBox::critical(this, "Ошибка парсинга", 
+                    QString("Произошла ошибка при парсинге файлов:\n%1").arg(e.what()));
+                return;
+            }
+            
+            // Проверяем, что данные были получены
+            if (variables.empty()) {
+                QMessageBox::warning(this, "Предупреждение", 
+                    "Не удалось загрузить данные из файлов. Проверьте правильность путей к файлам.");
+                return;
+            }
+            
+            // Обрабатываем события UI
+            QApplication::processEvents();
+            
             Experiment::destroy_instance();
-            Experiment* experiment = Experiment::get_instance(variables, std::vector<Variable>());
+            m_experiment = Experiment::get_instance(variables, std::vector<Variable>());
+            // Удалено обновление таблицы
+            // m_tableModel->setExperiment(m_experiment);
+            // m_tableModel->refreshData();
+            
+            // Обрабатываем события UI
+            QApplication::processEvents();
+            
+            // Обновляем ComboBox во всех графиках
+            for (PlotTab& plotTab : m_plotTabs) {
+                if (plotTab.type == "График") {
+                    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+                    if (plotSettings) {
+                        updateVariableComboBoxes(plotSettings);
+                    }
+                }
+            }
+            
+            QMessageBox::information(this, "Успешно", "Файлы успешно загружены и обработаны.");
         }
         else
         {
