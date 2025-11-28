@@ -512,26 +512,45 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
         return;
     }
 
-//    // Настраиваем делегаты для редактирования ячеек
-//    settingsWidget->setupDelegates(this);
-//
-//    int columnCount = ui->tableWidget->columnCount();
-//    int tableColumnCount = settingsTable->columnCount();
-//
-//    for (int i = 0; i < columnCount; ++i) {
-//        QString columnName = getColumnName(i);
-//        int rowIndex = settingsTable->rowCount();
-//        settingsTable->insertRow(rowIndex);
-//        settingsTable->setVerticalHeaderItem(rowIndex, new QTableWidgetItem(columnName));
-//
-//        QTableWidgetItem* checkItem = new QTableWidgetItem();
-//        checkItem->setCheckState(Qt::Checked);
-//        settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
-//
-//        for (int j = 1; j < tableColumnCount; ++j) {
-//            settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
-//        }
-//    }
+    // Настраиваем делегаты для редактирования ячеек
+    if (plotType == "График") {
+        PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(settingsWidget);
+        if (plotSettings) {
+            settingsWidget->setupDelegates(this);
+            
+            // Добавляем начальную строку с настройками по умолчанию
+            int rowIndex = settingsTable->rowCount();
+            settingsTable->insertRow(rowIndex);
+            
+            // Отрисовка (чекбокс)
+            QTableWidgetItem* enabledItem = new QTableWidgetItem();
+            enabledItem->setCheckState(Qt::Checked);
+            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnEnabled, enabledItem);
+            
+            // Тип линии
+            QTableWidgetItem* lineTypeItem = new QTableWidgetItem("Сплошная");
+            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnLineType, lineTypeItem);
+            
+            // Ширина линии
+            QTableWidgetItem* widthItem = new QTableWidgetItem("1");
+            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnWidth, widthItem);
+            
+            // Тип точки
+            QTableWidgetItem* pointTypeItem = new QTableWidgetItem("Без точки");
+            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnPointType, pointTypeItem);
+            
+            // Размер точки
+            QTableWidgetItem* pointSizeItem = new QTableWidgetItem("6");
+            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnPointSize, pointSizeItem);
+            
+            // Цвет
+            QTableWidgetItem* colorItem = new QTableWidgetItem("#0000ff"); // Синий по умолчанию
+            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnColor, colorItem);
+
+            // Заполняем ComboBox переменными из Experiment
+            updateVariableComboBoxes(plotSettings);
+        }
+    }
 
     ui->tabPlotSettings->addTab(settingsWidget, tabName);
 
@@ -543,6 +562,53 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     plotTab.settingsTab = settingsWidget;
     plotTab.settingsTable = settingsTable;
     m_plotTabs.append(plotTab);
+    
+    // Подключаем обработчик изменений в таблице настроек для графиков
+    if (plotType == "График") {
+        PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(settingsWidget);
+        if (plotSettings) {
+            // Используем индекс последнего добавленного элемента
+            int tabIndex = m_plotTabs.size() - 1;
+            
+            // Обработчик изменений в таблице настроек
+            connect(settingsTable, &QTableWidget::cellChanged, this, [this, tabIndex](int row, int column) {
+                Q_UNUSED(column);
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    if (plotTab.plot->graphCount() > 0 && row >= 0) {
+                        QCPGraph* graph = plotTab.plot->graph(0);
+                        PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+                        if (plotSettings) {
+                            applyPlotSettingsFromTable(graph, plotSettings->settingsTable(), row);
+                            plotTab.plot->replot();
+                        }
+                    }
+                }
+            });
+            
+            // Обработчик изменения выбора переменных в ComboBox
+            QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+            QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
+            
+            connect(xAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    int xIndex = plotSettings->xAxisComboBox()->currentData().toInt();
+                    int yIndex = plotSettings->yAxisComboBox()->currentData().toInt();
+                    draw_line_plot(xIndex, yIndex);
+                }
+            });
+            
+            connect(yAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    int xIndex = plotSettings->xAxisComboBox()->currentData().toInt();
+                    int yIndex = plotSettings->yAxisComboBox()->currentData().toInt();
+                    draw_line_plot(xIndex, yIndex);
+                }
+            });
+        }
+    }
 }
 
 void MainWindow::removeColumn()
