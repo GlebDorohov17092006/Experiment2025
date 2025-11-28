@@ -6,6 +6,7 @@
 QT_BEGIN_NAMESPACE
 class QTableWidget;
 class QWidget;
+class QComboBox;
 namespace Ui {
 class PlotSettingsWidget;
 }
@@ -31,6 +32,8 @@ public:
 
     QTableWidget* settingsTable() const override;
     void setupDelegates(QWidget* parent) override;
+    QComboBox* xAxisComboBox() const;
+    QComboBox* yAxisComboBox() const;
 
 private:
     Ui::PlotSettingsWidget *ui;
