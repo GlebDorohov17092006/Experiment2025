@@ -21,12 +21,12 @@
         </font>
        </property>
        <property name="text">
-        <string>Название оси X:</string>
+        <string>Переменная X:</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QLineEdit" name="lineEdit_xAxisLabel">
+      <widget class="QComboBox" name="comboBox_xAxis">
        <property name="maximumSize">
         <size>
          <width>300</width>
@@ -43,12 +43,12 @@
         </font>
        </property>
        <property name="text">
-        <string>Название оси Y:</string>
+        <string>Переменная Y:</string>
        </property>
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QLineEdit" name="lineEdit_yAxisLabel">
+      <widget class="QComboBox" name="comboBox_yAxis">
        <property name="maximumSize">
         <size>
          <width>300</width>

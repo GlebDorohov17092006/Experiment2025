@@ -3,6 +3,7 @@
 #include "ComboItemDelegate.h"
 #include "ColorDialogItemDelegate.h"
 #include <QTableWidget>
+#include <QComboBox>
 
 PlotSettingsWidget::PlotSettingsWidget(QWidget *parent)
     : BaseSettingsWidget(parent)
@@ -43,5 +44,15 @@ void PlotSettingsWidget::setupDelegates(QWidget* parent)
     // Столбец цвета
     ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(parent);
     ui->settingsTable->setItemDelegateForColumn(ColumnColor, colorDelegate);
+}
+
+QComboBox* PlotSettingsWidget::xAxisComboBox() const
+{
+    return ui->comboBox_xAxis;
+}
+
+QComboBox* PlotSettingsWidget::yAxisComboBox() const
+{
+    return ui->comboBox_yAxis;
 }
 
