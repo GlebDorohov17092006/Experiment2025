@@ -14,6 +14,7 @@
 #include "TextReportBlock.h"
 #include "TableReportBlock.h"
 #include "PlotReportBlock.h"
+#include "plotsettingswidget.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -44,6 +45,7 @@
 #include <QTextDocumentWriter>
 #include <QPrinter>
 #include <QPrintDialog>
+#include <QVector>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -882,4 +884,226 @@ void MainWindow::saveReport()
     document.print(&printer);
 
     QMessageBox::information(this, "", QString("Отчет успешно сохранен в файл:\n%1").arg(fileName));
+}
+void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
+{
+    if (!plotSettings) {
+        return;
+    }
+    
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+    
+    QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+    QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
+    
+    if (!xAxisCombo || !yAxisCombo) {
+        return;
+    }
+    
+    // Сохраняем текущие выбранные индексы (если ComboBox уже заполнен)
+    int currentXIndex = -1;
+    int currentYIndex = -1;
+    if (xAxisCombo->count() > 0) {
+        currentXIndex = xAxisCombo->currentData().toInt();
+    }
+    if (yAxisCombo->count() > 0) {
+        currentYIndex = yAxisCombo->currentData().toInt();
+    }
+    
+    xAxisCombo->clear();
+    yAxisCombo->clear();
+
+    if (experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
+        auto variable = experiment->get_variable(i).get();
+        QString varName = QString::fromStdString(variable->get_name_tables());
+        if (varName.isEmpty()) {
+            varName = QString("Переменная %1").arg(i + 1);
+        }
+        xAxisCombo->addItem(varName, static_cast<int>(i));
+        yAxisCombo->addItem(varName, static_cast<int>(i));
+    }
+
+    // Устанавливаем значения по умолчанию, если они не были сохранены
+    if (currentXIndex < 0 || currentXIndex >= static_cast<int>(experiment->get_variables_count())) {
+        currentXIndex = 0; // Первая переменная по умолчанию
+    }
+    if (currentYIndex < 0 || currentYIndex >= static_cast<int>(experiment->get_variables_count())) {
+        currentYIndex = (experiment->get_variables_count() > 1) ? 1 : 0; // Вторая переменная по умолчанию, или первая если только одна
+    }
+
+    // Устанавливаем выбранные индексы
+    int xComboIndex = xAxisCombo->findData(currentXIndex);
+    if (xComboIndex >= 0) {
+        xAxisCombo->setCurrentIndex(xComboIndex);
+    } else if (xAxisCombo->count() > 0) {
+        xAxisCombo->setCurrentIndex(0);
+    }
+
+    int yComboIndex = yAxisCombo->findData(currentYIndex);
+    if (yComboIndex >= 0) {
+        yAxisCombo->setCurrentIndex(yComboIndex);
+    } else if (yAxisCombo->count() > 0) {
+        yAxisCombo->setCurrentIndex((yAxisCombo->count() > 1) ? 1 : 0);
+    }
+}
+
+void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* settingsTable, int rowIndex)
+{
+    if (!graph || !settingsTable || rowIndex < 0 || rowIndex >= settingsTable->rowCount()) {
+        return;
+    }
+    
+    // Проверяем, включена ли отрисовка
+    QTableWidgetItem* enabledItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnEnabled);
+    if (enabledItem && enabledItem->checkState() != Qt::Checked) {
+        graph->setVisible(false);
+        return;
+    }
+    graph->setVisible(true);
+    
+    // Тип линии
+    QTableWidgetItem* lineTypeItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnLineType);
+    if (lineTypeItem) {
+        QString lineType = lineTypeItem->text();
+        if (lineType == "Сплошная" || lineType == "line") {
+            graph->setLineStyle(QCPGraph::lsLine);
+        } else if (lineType == "Пунктирная" || lineType == "none") {
+            graph->setLineStyle(QCPGraph::lsNone);
+        } else if (lineType == "Ступенчатая" || lineType == "step") {
+            graph->setLineStyle(QCPGraph::lsStepLeft);
+        }
+    }
+    
+    // Ширина линии
+    QTableWidgetItem* widthItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnWidth);
+    if (widthItem) {
+        bool ok;
+        double width = widthItem->text().toDouble(&ok);
+        if (ok && width > 0) {
+            QPen pen = graph->pen();
+            pen.setWidthF(width);
+            graph->setPen(pen);
+        }
+    }
+    
+    // Тип точки
+    QTableWidgetItem* pointTypeItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnPointType);
+    QCPScatterStyle scatterStyle = graph->scatterStyle();
+    if (pointTypeItem) {
+        QString pointType = pointTypeItem->text();
+        QCPScatterStyle::ScatterShape shape = QCPScatterStyle::ssNone;
+        
+        if (pointType == "Круг" || pointType == "circle") {
+            shape = QCPScatterStyle::ssCircle;
+        } else if (pointType == "Квадрат" || pointType == "square") {
+            shape = QCPScatterStyle::ssSquare;
+        } else if (pointType == "Крестик" || pointType == "cross") {
+            shape = QCPScatterStyle::ssCross;
+        } else if (pointType == "Плюс" || pointType == "plus") {
+            shape = QCPScatterStyle::ssPlus;
+        } else if (pointType == "Ромб" || pointType == "diamond") {
+            shape = QCPScatterStyle::ssDiamond;
+        } else if (pointType == "Без точки" || pointType == "none") {
+            shape = QCPScatterStyle::ssNone;
+        }
+        
+        scatterStyle.setShape(shape);
+    }
+    
+    // Размер точки
+    QTableWidgetItem* pointSizeItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnPointSize);
+    if (pointSizeItem) {
+        bool ok;
+        double size = pointSizeItem->text().toDouble(&ok);
+        if (ok && size > 0) {
+            scatterStyle.setSize(size);
+        }
+    }
+    
+    // Цвет
+    QTableWidgetItem* colorItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnColor);
+    if (colorItem) {
+        QString colorString = colorItem->text();
+        QColor color(colorString);
+        if (color.isValid()) {
+            QPen pen = graph->pen();
+            pen.setColor(color);
+            graph->setPen(pen);
+            
+            scatterStyle.setPen(QPen(color));
+            scatterStyle.setBrush(QBrush(color));
+        }
+    }
+    
+    graph->setScatterStyle(scatterStyle);
+}
+
+//Добавить из настроек графика, что отображать
+void MainWindow::draw_line_plot(int first_in, int second_in)
+{
+    if (m_plotTabs.empty()) {
+        return;
+    }
+    
+    PlotTab& plot = m_plotTabs[0];
+    
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+    
+    if (first_in < 0 || second_in < 0 ||
+        first_in >= static_cast<int>(experiment->get_variables_count()) ||
+        second_in >= static_cast<int>(experiment->get_variables_count())) {
+        return;
+    }
+
+    Variable* variable_first = experiment->get_variable(first_in).get();
+    Variable* variable_second = experiment->get_variable(second_in).get();
+
+        // Получаем измерения из выбранных переменных
+    const std::vector<double>& xMeasurements = variable_first->get_measurements();
+    const std::vector<double>& yMeasurements = variable_second->get_measurements();
+    
+    // Преобразуем в QVector
+    QVector<double> xQvector = QVector<double>(xMeasurements.begin(), xMeasurements.end());
+    QVector<double> yQvector = QVector<double>(yMeasurements.begin(), yMeasurements.end());
+    
+    // Проверяем, что есть данные для отображения
+    if (xQvector.isEmpty() || yQvector.isEmpty()) {
+        return;
+    }
+    
+    // Добавляем или обновляем график
+    if (plot.plot->graphCount() == 0) {
+        plot.plot->addGraph();
+    }
+    
+    QCPGraph* graph = plot.plot->graph(0);
+
+    graph->setAdaptiveSampling(false);
+    
+    // Применяем настройки из PlotSettingsWidget, если они есть
+    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plot.settingsTab);
+    if (plotSettings && plotSettings->settingsTable()->rowCount() > 0) {
+        // Применяем настройки из первой строки (можно расширить для нескольких графиков)
+        applyPlotSettingsFromTable(graph, plotSettings->settingsTable(), 0);
+    } else {
+        // Устанавливаем стиль линии по умолчанию
+        graph->setLineStyle(QCPGraph::lsLine);
+    }
+    
+    // Устанавливаем данные
+    graph->setData(xQvector, yQvector);
+    
+    // Обновляем оси и перерисовываем
+    plot.plot->rescaleAxes();
+    plot.plot->replot();
 }

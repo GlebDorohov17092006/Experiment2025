@@ -13,9 +13,11 @@ class Instrument;
 class Variable;
 class ComboItemDelegate;
 class QCustomPlot;
+class QCPGraph;
 class QTableWidget;
 class QFrame;
 class ReportBlock;
+class PlotSettingsWidget;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -30,6 +32,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void draw_line_plot(int first_in, int second_in);
 
 private slots:
     // Основные слоты из обеих веток
@@ -70,6 +73,8 @@ private:
     QString getColumnName(int columnIndex);
     void syncVariableInstrumentsTable();
     void syncPlotSettingsTables();
+    void applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* settingsTable, int rowIndex);
+    void updateVariableComboBoxes(PlotSettingsWidget* plotSettings);
     QString getInstrumentDisplayText(int instrumentIndex);
     void addDynamicPlotTab(const QString& plotType);
 
