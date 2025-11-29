@@ -60,7 +60,6 @@ private slots:
 
 private:
     // Методы из ветки Gleb (основная логика)
-    void createTestData();
     void updateVariableInstrumentsTable();
     void updateInstrumentDelegate();
     void setupErrorTypeDelegate();
@@ -95,7 +94,7 @@ private:
     InstrumentsModel* m_instrumentsModel;
     std::vector<std::shared_ptr<Instrument>> m_instruments;
     
-    // Из ветки Gleb
+    // из ветки Gleb
     ComboItemDelegate* m_instrumentDelegate;
     ComboItemDelegate* m_errorTypeDelegate;
     std::shared_ptr<Instrument> m_noInstrument;
