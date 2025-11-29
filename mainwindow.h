@@ -52,7 +52,7 @@ private slots:
     void saveReport();
     void onInstrumentCellDoubleClicked(int row, int column);
     void removeGraph(int index = -1);
-    void updateInstrumentTexts();
+    //void updateInstrumentTexts();
     void addTextBlockToReport();
     void addTableBlockToReport();
     void addPlotBlockToReport();

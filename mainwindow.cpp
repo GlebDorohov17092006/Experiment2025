@@ -785,7 +785,7 @@ void MainWindow::on_import_CSV_triggered()
             QApplication::processEvents();
             
             Experiment::destroy_instance();
-            m_experiment = Experiment::get_instance(variables, std::vector<Variable>());
+            Experiment::get_instance(variables, std::vector<Variable>());
             // Удалено обновление таблицы
             // m_tableModel->setExperiment(m_experiment);
             // m_tableModel->refreshData();
@@ -986,8 +986,8 @@ void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
     }
 
     for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
-        auto variable = experiment->get_variable(i).get();
-        QString varName = QString::fromStdString(variable->get_name_tables());
+        auto variable = experiment->get_variable(i);
+        QString varName = QString::fromStdString(variable.get_name_tables());
         if (varName.isEmpty()) {
             varName = QString("Переменная %1").arg(i + 1);
         }
@@ -1130,12 +1130,12 @@ void MainWindow::draw_line_plot(int first_in, int second_in)
         return;
     }
 
-    Variable* variable_first = experiment->get_variable(first_in).get();
-    Variable* variable_second = experiment->get_variable(second_in).get();
+    Variable variable_first = experiment->get_variable(first_in);
+    Variable variable_second = experiment->get_variable(second_in);
 
         // Получаем измерения из выбранных переменных
-    const std::vector<double>& xMeasurements = variable_first->get_measurements();
-    const std::vector<double>& yMeasurements = variable_second->get_measurements();
+    const std::vector<double>& xMeasurements = variable_first.get_measurements();
+    const std::vector<double>& yMeasurements = variable_second.get_measurements();
     
     // Преобразуем в QVector
     QVector<double> xQvector = QVector<double>(xMeasurements.begin(), xMeasurements.end());
