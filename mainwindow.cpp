@@ -59,7 +59,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     setupNoInstrument();
-    createTestData();
+    // Удален вызов createTestData() - теперь создается пустая таблица
 
     // Настраиваем таблицу измерений
     ui->tableViewMeasurements->setModel(m_tableModel);
@@ -220,31 +220,7 @@ void MainWindow::onInstrumentChanged(QTableWidgetItem *item)
     m_tableModel->refreshData();
 }
 
-void MainWindow::createTestData()
-{
-    auto thermometer = std::make_shared<AbsoluteInstrument>("Термометр", 0.5);
-    auto voltmeter = std::make_shared<RelativeInstrument>("Вольтметр", 0.02);
-
-    m_instruments.push_back(thermometer);
-    m_instruments.push_back(voltmeter);
-
-    std::vector<double> temperatureData = {20.5, 21.2, 22.8, 23.1, 24.5, 25.0};
-    std::vector<double> voltageData = {12.1, 12.3, 11.9, 12.5, 12.2, 12.4};
-    std::vector<double> currentData = {1.5, 1.6, 1.55, 1.62, 1.58, 1.61};
-
-    auto experiment = Experiment::get_instance();
-
-    Variable tempVar(temperatureData, "Температура", "T", thermometer.get());
-    Variable voltageVar(voltageData, "Напряжение", "U", voltmeter.get());
-    Variable currentVar(currentData, "Ток", "I", m_noInstrument.get());
-
-    experiment->add_variable(tempVar);
-    experiment->add_variable(voltageData);
-    experiment->add_variable(currentVar);
-
-    updateVariableInstrumentsTable();
-    m_tableModel->refreshData();
-}
+// Удален метод createTestData() - теперь при запуске создается пустая таблица
 
 void MainWindow::updateVariableInstrumentsTable()
 {
