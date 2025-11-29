@@ -123,37 +123,12 @@ MainWindow::MainWindow(QWidget *parent)
     // Подключаем синхронизацию вкладок графиков и настроек
     connect(ui->tabPlot, &QTabWidget::currentChanged, this, &MainWindow::onPlotTabChanged);
     connect(ui->tabPlotSettings, &QTabWidget::currentChanged, this, &MainWindow::onPlotSettingsTabChanged);
-
-    // Парсинг по умолчанию (из ветки main)
-    std::vector<Variable> variables = parser("../../electricChain.csv", "../../errors_tools.json");
-    Experiment::get_instance(variables, {});
-
-    // Отображение графиков (из ветки main)
-    if(m_plotTabs.size() >= 2)
-    {
-        PlotTab plot = m_plotTabs[0];
-
-        QVector<double> xQvector = QVector<double>(variables[0].get_measurements().begin(), variables[0].get_measurements().end());
-        QVector<double> yQvector = QVector<double>(variables[1].get_measurements().begin(), variables[1].get_measurements().end());
-
-        plot.plot->addGraph();
-        // Отключаем адаптивную выборку для правильного отображения ломаной линии
-        plot.plot->graph()->setAdaptiveSampling(false);
-        // Устанавливаем стиль линии как ломаную
-        plot.plot->graph()->setLineStyle(QCPGraph::lsLine);
-        plot.plot->graph()->setData(xQvector, yQvector);
-
-        plot.plot->rescaleAxes();
-        plot.plot->replot();
-    }
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
 }
-
-// ========== МЕТОДЫ ИЗ ВЕТКИ GLEB (ОСНОВНАЯ ЛОГИКА) ==========
 
 void MainWindow::setupNoInstrument()
 {
@@ -219,8 +194,6 @@ void MainWindow::onInstrumentChanged(QTableWidgetItem *item)
 
     m_tableModel->refreshData();
 }
-
-// Удален метод createTestData() - теперь при запуске создается пустая таблица
 
 void MainWindow::updateVariableInstrumentsTable()
 {
