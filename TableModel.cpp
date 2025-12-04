@@ -15,6 +15,9 @@ int TableModel::rowCount(const QModelIndex &parent) const
         return 0;
 
     auto experiment = Experiment::get_instance();
+    if (!experiment)
+        return 0;
+
     size_t maxRows = 0;
     for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
         auto& var = experiment->get_variable(i);
@@ -29,6 +32,9 @@ int TableModel::columnCount(const QModelIndex &parent) const
         return 0;
 
     auto experiment = Experiment::get_instance();
+    if (!experiment)
+        return 0;
+
     return static_cast<int>(experiment->get_variables_count());
 }
 
@@ -38,8 +44,14 @@ QVariant TableModel::data(const QModelIndex &index, int role) const
         return QVariant();
 
     auto experiment = Experiment::get_instance();
+    if (!experiment)
+        return QVariant();
+
     int col = index.column();
     int row = index.row();
+
+    if (col >= static_cast<int>(experiment->get_variables_count()))
+        return QVariant();
 
     auto& variable = experiment->get_variable(col);
 
@@ -76,8 +88,13 @@ QVariant TableModel::headerData(int section, Qt::Orientation orientation, int ro
         return QVariant();
 
     auto experiment = Experiment::get_instance();
+    if (!experiment)
+        return QVariant();
 
     if (orientation == Qt::Horizontal) {
+        if (section >= static_cast<int>(experiment->get_variables_count()))
+            return QString("Переменная %1").arg(section + 1);
+
         auto& variable = experiment->get_variable(section);
         QString name = QString::fromStdString(variable.get_name_tables());
         QString tag = QString::fromStdString(variable.get_name_calculated());
@@ -99,8 +116,14 @@ bool TableModel::setData(const QModelIndex &index, const QVariant &value, int ro
     qDebug() << "setData called:" << index.row() << index.column() << value;
 
     auto experiment = Experiment::get_instance();
+    if (!experiment)
+        return false;
+
     int col = index.column();
     int row = index.row();
+
+    if (col >= static_cast<int>(experiment->get_variables_count()))
+        return false;
 
     auto& variable = experiment->get_variable(col);
 
@@ -140,7 +163,22 @@ Qt::ItemFlags TableModel::flags(const QModelIndex &index) const
 void TableModel::refreshData()
 {
     beginResetModel();
+
+    // Принудительно обновляем данные
+    auto experiment = Experiment::get_instance();
+    if (experiment) {
+        qDebug() << "TableModel refreshData: variables count =" << experiment->get_variables_count();
+        if (experiment->get_variables_count() > 0) {
+            qDebug() << "First variable measurements count =" << experiment->get_variable(0).get_measurements_count();
+        }
+    }
+
     endResetModel();
+
+    // Испускаем сигналы об изменении данных
+    emit dataChanged(createIndex(0, 0),
+                    createIndex(rowCount() - 1, columnCount() - 1));
+    emit layoutChanged();
 }
 
 void TableModel::refreshColumn(int column)
