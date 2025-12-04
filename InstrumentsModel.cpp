@@ -3,6 +3,7 @@
 #include "AbsoluteInstrument.h"
 #include "RelativeInstrument.h"
 #include "CombinedInstrument.h"
+#include <QDebug>
 
 InstrumentsModel::InstrumentsModel(QObject *parent)
     : QAbstractTableModel(parent)
