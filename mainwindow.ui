@@ -366,7 +366,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="import_data">
    <property name="text">
-    <string>Импорт CSV</string>
+    <string>Импорт данных</string>
    </property>
    <property name="toolTip">
     <string>Импорт данных</string>
@@ -374,7 +374,7 @@
   </action>
   <action name="export_data">
    <property name="text">
-    <string>Экспорт CSV</string>
+    <string>Экспорт данных</string>
    </property>
    <property name="toolTip">
     <string>Экспорт данных</string>
