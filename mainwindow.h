@@ -32,7 +32,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    void draw_line_plot(int first_in, int second_in);
+    void draw_line_plot(int first_in, int second_in, int plot_tab_index);
 
 private slots:
     // Основные слоты из обеих веток
@@ -56,7 +56,9 @@ private slots:
     void addTextBlockToReport();
     void addTableBlockToReport();
     void addPlotBlockToReport();
-    void on_import_CSV_triggered();
+    void on_import_data_triggered();
+
+    void on_export_data_triggered();
 
 private:
     // Методы из ветки Gleb (основная логика)

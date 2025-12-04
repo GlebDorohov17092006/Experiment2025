@@ -1,7 +1,9 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 #include "json.hpp"
+#include <qDebug>
 #include "parser.h"
 #include "Experiment.h"
 #include "AbsoluteInstrument.h"
@@ -32,6 +34,12 @@ std::vector<Variable> parser_csv(const std::string& filename)
     //Line-by-line parsing of the table
     while(std::getline(csv_file, header_of_table))
     {
+        // Удаляем все кавычки из строки без каких-либо проверок
+        header_of_table.erase(
+            std::remove(header_of_table.begin(), header_of_table.end(), '\"'),
+            header_of_table.end()
+        );
+
         //Parsing curr line of the table
         std::stringstream row_of_table(header_of_table);
         std::string cell_of_table;
@@ -39,6 +47,13 @@ std::vector<Variable> parser_csv(const std::string& filename)
 
         while(getline(row_of_table, cell_of_table, ','))
         {
+            // Убираем пробелы и перевод строки по краям
+            while (!cell_of_table.empty() && (cell_of_table.back() == ' ' || cell_of_table.back() == '\r' || cell_of_table.back() == '\t'))
+                cell_of_table.pop_back();
+            size_t firstNotSpace = cell_of_table.find_first_not_of(" \t\r");
+            if (firstNotSpace != std::string::npos)
+                cell_of_table = cell_of_table.substr(firstNotSpace);
+
             //Creating object of class variable for curr column
             if(num_line == 1)
             {
@@ -51,7 +66,24 @@ std::vector<Variable> parser_csv(const std::string& filename)
             else
             {
                 //Adding experimental data
-                variables[num_of_sell].add_measurement(atof(cell_of_table.c_str()));
+                double value = 0.0;
+                try
+                {
+                    if (!cell_of_table.empty())
+                    {
+                        value = std::stod(cell_of_table);
+                    }
+                }
+                catch (const std::exception&)
+                {
+                }
+
+                if (num_of_sell < static_cast<int>(variables.size()))
+                {
+                    variables[num_of_sell].add_measurement(value);
+                }
+
+                qDebug() << value << "\n";
             }
 
             num_of_sell += 1;

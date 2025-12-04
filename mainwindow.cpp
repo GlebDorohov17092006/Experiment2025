@@ -46,6 +46,8 @@
 #include <QPrinter>
 #include <QPrintDialog>
 #include <QVector>
+#include <QFile>
+#include <QTextStream>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -621,22 +623,20 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
             // Обработчик изменения выбора переменных в ComboBox
             QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
             QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-            
+
             connect(xAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
                 if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
-                    PlotTab& plotTab = m_plotTabs[tabIndex];
                     int xIndex = plotSettings->xAxisComboBox()->currentData().toInt();
                     int yIndex = plotSettings->yAxisComboBox()->currentData().toInt();
-                    draw_line_plot(xIndex, yIndex);
+                    draw_line_plot(xIndex, yIndex, tabIndex);
                 }
             });
-            
+
             connect(yAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
                 if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
-                    PlotTab& plotTab = m_plotTabs[tabIndex];
                     int xIndex = plotSettings->xAxisComboBox()->currentData().toInt();
                     int yIndex = plotSettings->yAxisComboBox()->currentData().toInt();
-                    draw_line_plot(xIndex, yIndex);
+                    draw_line_plot(xIndex, yIndex, tabIndex);
                 }
             });
         }
@@ -679,7 +679,7 @@ void MainWindow::removeGraph(int index)
     }
 }
 
-void MainWindow::on_import_CSV_triggered()
+void MainWindow::on_import_data_triggered()
 {
     //Creating dialog window
     QFileDialog dialog(this);
@@ -735,9 +735,6 @@ void MainWindow::on_import_CSV_triggered()
             
             Experiment::destroy_instance();
             Experiment::get_instance(variables, std::vector<Variable>());
-            // Удалено обновление таблицы
-            // m_tableModel->setExperiment(m_experiment);
-            // m_tableModel->refreshData();
             
             // Обрабатываем события UI
             QApplication::processEvents();
@@ -937,6 +934,8 @@ void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
     for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
         auto variable = experiment->get_variable(i);
         QString varName = QString::fromStdString(variable.get_name_tables());
+        // Убираем лишние кавычки из названий переменных для отображения в ComboBox
+        varName.remove('\"');
         if (varName.isEmpty()) {
             varName = QString("Переменная %1").arg(i + 1);
         }
@@ -1060,13 +1059,17 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
 }
 
 //Добавить из настроек графика, что отображать
-void MainWindow::draw_line_plot(int first_in, int second_in)
+void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
 {
     if (m_plotTabs.empty()) {
         return;
     }
-    
-    PlotTab& plot = m_plotTabs[0];
+
+    if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
+        return;
+    }
+
+    PlotTab& plot = m_plotTabs[plot_tab_index];
     
     Experiment* experiment = Experiment::get_instance();
     if (!experiment) {
@@ -1121,3 +1124,115 @@ void MainWindow::draw_line_plot(int first_in, int second_in)
     plot.plot->rescaleAxes();
     plot.plot->replot();
 }
+
+void MainWindow::on_export_data_triggered()
+{
+    // Диалог выбора двух файлов: CSV и JSON 
+    QFileDialog dialog(this);
+
+    dialog.setAcceptMode(QFileDialog::AcceptOpen);
+    dialog.setViewMode(QFileDialog::Detail);
+    dialog.setFileMode(QFileDialog::ExistingFiles);
+    dialog.setNameFilter("*.json *.csv");
+
+    if (dialog.exec() == QFileDialog::Accepted)
+    {
+        QString csvFile, jsonFile;
+
+        QStringList files = dialog.selectedFiles();
+        if (files.size() == 2)
+        {
+            for (const QString &filePath : files)
+            {
+                if (filePath.endsWith(".csv", Qt::CaseInsensitive))
+                {
+                    csvFile = filePath;
+                }
+                else if (filePath.endsWith(".json", Qt::CaseInsensitive))
+                {
+                    jsonFile = filePath;
+                }
+            }
+
+            // Проверяем, что CSV-файл действительно выбран
+            if (csvFile.isEmpty())
+            {
+                QMessageBox::critical(this,
+                                      "Ошибка выбора файлов",
+                                      "Не выбран CSV-файл для сохранения данных.");
+                return;
+            }
+
+            Experiment *experiment = Experiment::get_instance();
+
+            size_t num_of_variables = experiment->get_variables_count();
+            if (!num_of_variables)
+            {
+                QMessageBox::critical(this,
+                                      "Ошибка сохранения данных",
+                                      "Пожалуйста, убедитесь, что таблица непустая.");
+                return;
+            }
+
+            // Получаем количество измерений только после проверки, что есть переменные
+            size_t num_of_measurements = experiment->get_variable(0).get_measurements_count();
+            if (num_of_measurements == 0) {
+                QMessageBox::critical(this,
+                                      "Ошибка сохранения данных",
+                                      "В таблице нет ни одного измерения. CSV не будет перезаписан нулями.");
+                return;
+            }
+
+            QFile file(csvFile);
+            if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QMessageBox::critical(this,
+                                      "Ошибка сохранения данных",
+                                      "Не удалось открыть CSV-файл для записи.");
+                return;
+            }
+
+            QTextStream stream(&file);
+
+            // Заполняем CSV-файл именами переменных
+            for (size_t curr_num_of_variable = 0; curr_num_of_variable < num_of_variables; ++curr_num_of_variable)
+            {
+                stream << QString::fromStdString(experiment->get_variable(curr_num_of_variable).get_name_tables());
+                if (curr_num_of_variable != (num_of_variables - 1))
+                {
+                    stream << ",";
+                }
+                else
+                {
+                    stream << "\n";
+                }
+            }
+
+            // Заполняем CSV-файл измерениями
+            for (size_t curr_num_of_measurement = 0; curr_num_of_measurement < num_of_measurements; ++curr_num_of_measurement)
+            {
+                for (size_t curr_num_of_variable = 0; curr_num_of_variable < num_of_variables; ++curr_num_of_variable)
+                {
+                    stream << QString::number(experiment->get_variable(curr_num_of_variable).get_measurement(curr_num_of_measurement));
+                    if (curr_num_of_variable != (num_of_variables - 1))
+                    {
+                        stream << ",";
+                    }
+                    else
+                    {
+                        stream << "\n";
+                    }
+                }
+            }
+            file.close();
+            QMessageBox::information(this, "Успешно","Данные успешно экспортированы.");
+        }
+        else
+        {
+            QMessageBox::critical(this,
+                                  "Ошибка выбора файлов",
+                                  "Пожалуйста, выберите ровно два файла: один CSV и один JSON");
+            return;
+        }
+    }
+}
+
