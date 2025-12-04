@@ -48,6 +48,8 @@
 #include <QVector>
 #include <QFile>
 #include <QTextStream>
+#include <QApplication>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -61,7 +63,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     setupNoInstrument();
-    // Удален вызов createTestData() - теперь создается пустая таблица
+
+    // Создаем пустой эксперимент при запуске
+    Experiment::destroy_instance();
+    Experiment::get_instance(std::vector<Variable>(), std::vector<Variable>());
 
     // Настраиваем таблицу измерений
     ui->tableViewMeasurements->setModel(m_tableModel);
@@ -115,7 +120,7 @@ MainWindow::MainWindow(QWidget *parent)
     addDynamicPlotTab("Скаттерплот");
 
     // Подключаем обработчики двойного клика по заголовкам
-    connect(ui->tableViewMeasurements->horizontalHeader(), &QHeaderView::sectionDoubleClicked, 
+    connect(ui->tableViewMeasurements->horizontalHeader(), &QHeaderView::sectionDoubleClicked,
             this, &MainWindow::onColumnHeaderDoubleClicked);
 
     // Подключаем обработчики двойного клика по ячейкам инструментов
@@ -200,13 +205,18 @@ void MainWindow::onInstrumentChanged(QTableWidgetItem *item)
 void MainWindow::updateVariableInstrumentsTable()
 {
     auto experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+
+    size_t variablesCount = experiment->get_variables_count();
 
     ui->variableInstrumentsTable->clear();
     ui->variableInstrumentsTable->setRowCount(1);
-    ui->variableInstrumentsTable->setColumnCount(static_cast<int>(experiment->get_variables_count()));
+    ui->variableInstrumentsTable->setColumnCount(static_cast<int>(variablesCount));
 
     QStringList headers;
-    for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
+    for (size_t i = 0; i < variablesCount; ++i) {
         auto& var = experiment->get_variable(i);
         QString headerName = QString::fromStdString(var.get_name_tables());
         QString tag = QString::fromStdString(var.get_name_calculated());
@@ -218,16 +228,19 @@ void MainWindow::updateVariableInstrumentsTable()
     }
     ui->variableInstrumentsTable->setHorizontalHeaderLabels(headers);
 
-    for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
+    for (size_t i = 0; i < variablesCount; ++i) {
         auto& var = experiment->get_variable(i);
 
         QTableWidgetItem* item = new QTableWidgetItem();
         QString instrumentName = QString::fromStdString(var.get_name_instrument());
         item->setText(instrumentName);
-
         item->setFlags(item->flags() | Qt::ItemIsEditable);
+
         ui->variableInstrumentsTable->setItem(0, static_cast<int>(i), item);
     }
+
+    // Растягиваем заголовки
+    ui->variableInstrumentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
 
 void MainWindow::addColumn()
@@ -407,7 +420,7 @@ void MainWindow::onColumnHeaderDoubleClicked(int col)
 
             // Обновляем заголовки во всех таблицах
             updateVariableInstrumentsTable();
-            
+
             // Обновляем вертикальный заголовок в таблицах настроек динамически добавленных графиков
             for (auto& plotTab : m_plotTabs) {
                 if (col < plotTab.settingsTable->rowCount()) {
@@ -421,9 +434,17 @@ void MainWindow::onColumnHeaderDoubleClicked(int col)
 QString MainWindow::getColumnName(int columnIndex)
 {
     auto experiment = Experiment::get_instance();
-    if (columnIndex < static_cast<int>(experiment->get_variables_count())) {
+    if (!experiment) {
+        return QString("Столбец %1").arg(columnIndex + 1);
+    }
+
+    if (columnIndex >= 0 && columnIndex < static_cast<int>(experiment->get_variables_count())) {
         auto& var = experiment->get_variable(columnIndex);
-        return QString::fromStdString(var.get_name_tables());
+        QString name = QString::fromStdString(var.get_name_tables());
+        if (name.isEmpty()) {
+            name = QString("Переменная %1").arg(columnIndex + 1);
+        }
+        return name;
     } else {
         return QString("Столбец %1").arg(columnIndex + 1);
     }
@@ -446,34 +467,62 @@ QString MainWindow::getColumnTag(int columnIndex)
 void MainWindow::syncPlotSettingsTables()
 {
     auto experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+
     int mainTableColumns = static_cast<int>(experiment->get_variables_count());
 
     // Синхронизируем таблицы настроек динамически добавленных графиков
     for (auto& plotTab : m_plotTabs) {
+        if (!plotTab.settingsTable) {
+            continue;
+        }
+
+        int currentRows = plotTab.settingsTable->rowCount();
+
         // Добавляем недостающие строки
-        while (plotTab.settingsTable->rowCount() < mainTableColumns) {
-            QString columnName = getColumnName(plotTab.settingsTable->rowCount());
-            int rowIndex = plotTab.settingsTable->rowCount();
-            plotTab.settingsTable->insertRow(rowIndex);
-            plotTab.settingsTable->setVerticalHeaderItem(rowIndex, new QTableWidgetItem(columnName));
+        if (currentRows < mainTableColumns) {
+            for (int i = currentRows; i < mainTableColumns; ++i) {
+                QString columnName = getColumnName(i);
+                plotTab.settingsTable->insertRow(i);
+                plotTab.settingsTable->setVerticalHeaderItem(i, new QTableWidgetItem(columnName));
 
-            QTableWidgetItem* checkItem = new QTableWidgetItem();
-            checkItem->setCheckState(Qt::Checked);
-            plotTab.settingsTable->setItem(rowIndex, BaseSettingsWidget::ColumnEnabled, checkItem);
+                // Добавляем значения по умолчанию
+                if (plotTab.type == "График") {
+                    QTableWidgetItem* checkItem = new QTableWidgetItem();
+                    checkItem->setCheckState(Qt::Checked);
+                    plotTab.settingsTable->setItem(i, 0, checkItem);
 
-            // Добавляем остальные колонки
-            int columnCount = plotTab.settingsTable->columnCount();
-            for (int j = 1; j < columnCount; ++j) {
-                plotTab.settingsTable->setItem(rowIndex, j, new QTableWidgetItem(""));
+                    // Тип линии по умолчанию
+                    plotTab.settingsTable->setItem(i, 1, new QTableWidgetItem("Сплошная"));
+
+                    // Ширина линии по умолчанию
+                    plotTab.settingsTable->setItem(i, 2, new QTableWidgetItem("1"));
+
+                    // Тип точки по умолчанию
+                    plotTab.settingsTable->setItem(i, 3, new QTableWidgetItem("Круг"));
+
+                    // Размер точки по умолчанию
+                    plotTab.settingsTable->setItem(i, 4, new QTableWidgetItem("6"));
+
+                    // Цвет по умолчанию (синий)
+                    QColor defaultColor = QColor::fromHsv((i * 60) % 360, 255, 255);
+                    plotTab.settingsTable->setItem(i, 5, new QTableWidgetItem(defaultColor.name()));
+                }
+            }
+        }
+        // Удаляем лишние строки
+        else if (currentRows > mainTableColumns) {
+            for (int i = currentRows - 1; i >= mainTableColumns; --i) {
+                plotTab.settingsTable->removeRow(i);
             }
         }
 
         // Обновляем вертикальные заголовки
         for (int i = 0; i < mainTableColumns; ++i) {
             QString columnName = getColumnName(i);
-            if (i < plotTab.settingsTable->rowCount()) {
-                plotTab.settingsTable->setVerticalHeaderItem(i, new QTableWidgetItem(columnName));
-            }
+            plotTab.settingsTable->setVerticalHeaderItem(i, new QTableWidgetItem(columnName));
         }
     }
 }
@@ -551,32 +600,32 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
         PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(settingsWidget);
         if (plotSettings) {
             settingsWidget->setupDelegates(this);
-            
+
             // Добавляем начальную строку с настройками по умолчанию
             int rowIndex = settingsTable->rowCount();
             settingsTable->insertRow(rowIndex);
-            
+
             // Отрисовка (чекбокс)
             QTableWidgetItem* enabledItem = new QTableWidgetItem();
             enabledItem->setCheckState(Qt::Checked);
             settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnEnabled, enabledItem);
-            
+
             // Тип линии
             QTableWidgetItem* lineTypeItem = new QTableWidgetItem("Сплошная");
             settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnLineType, lineTypeItem);
-            
+
             // Ширина линии
             QTableWidgetItem* widthItem = new QTableWidgetItem("1");
             settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnWidth, widthItem);
-            
+
             // Тип точки
             QTableWidgetItem* pointTypeItem = new QTableWidgetItem("Без точки");
             settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnPointType, pointTypeItem);
-            
+
             // Размер точки
             QTableWidgetItem* pointSizeItem = new QTableWidgetItem("6");
             settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnPointSize, pointSizeItem);
-            
+
             // Цвет
             QTableWidgetItem* colorItem = new QTableWidgetItem("#0000ff"); // Синий по умолчанию
             settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnColor, colorItem);
@@ -596,14 +645,14 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     plotTab.settingsTab = settingsWidget;
     plotTab.settingsTable = settingsTable;
     m_plotTabs.append(plotTab);
-    
+
     // Подключаем обработчик изменений в таблице настроек для графиков
     if (plotType == "График") {
         PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(settingsWidget);
         if (plotSettings) {
             // Используем индекс последнего добавленного элемента
             int tabIndex = m_plotTabs.size() - 1;
-            
+
             // Обработчик изменений в таблице настроек
             connect(settingsTable, &QTableWidget::cellChanged, this, [this, tabIndex](int row, int column) {
                 Q_UNUSED(column);
@@ -619,7 +668,7 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
                     }
                 }
             });
-            
+
             // Обработчик изменения выбора переменных в ComboBox
             QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
             QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
@@ -704,59 +753,113 @@ void MainWindow::on_import_data_triggered()
                 {
                     csvFile = filePath;
                 }
-                else
+                else if(filePath.endsWith(".json", Qt::CaseInsensitive))
                 {
                     jsonFile = filePath;
                 }
             }
 
+            // Проверяем, что оба файла выбраны
+            if(csvFile.isEmpty() || jsonFile.isEmpty()) {
+                QMessageBox::critical(this, "Ошибка",
+                    "Необходимо выбрать один CSV и один JSON файл");
+                return;
+            }
+
             //Parsing files
-            // Обрабатываем события UI, чтобы приложение не зависало
+            QApplication::setOverrideCursor(Qt::WaitCursor);
             QApplication::processEvents();
-            
+
             std::vector<Variable> variables;
             try {
+                qDebug() << "Начало парсинга...";
+                qDebug() << "CSV файл:" << csvFile;
+                qDebug() << "JSON файл:" << jsonFile;
+
                 variables = parser(csvFile.toStdString(), jsonFile.toStdString());
+
+                qDebug() << "Парсинг завершен. Переменных:" << variables.size();
+                if (!variables.empty()) {
+                    qDebug() << "Имя первой переменной:" << QString::fromStdString(variables[0].get_name_tables());
+                    qDebug() << "Количество измерений в первой переменной:" << variables[0].get_measurements_count();
+                }
             } catch (const std::exception& e) {
-                QMessageBox::critical(this, "Ошибка парсинга", 
+                QApplication::restoreOverrideCursor();
+                QMessageBox::critical(this, "Ошибка парсинга",
                     QString("Произошла ошибка при парсинге файлов:\n%1").arg(e.what()));
                 return;
             }
-            
+
             // Проверяем, что данные были получены
             if (variables.empty()) {
-                QMessageBox::warning(this, "Предупреждение", 
-                    "Не удалось загрузить данные из файлов. Проверьте правильность путей к файлам.");
+                QApplication::restoreOverrideCursor();
+                QMessageBox::warning(this, "Предупреждение",
+                    "Не удалось загрузить данные из файлов.\nВозможно, файлы пусты или имеют неправильный формат.");
                 return;
             }
-            
-            // Обрабатываем события UI
-            QApplication::processEvents();
-            
+
+            // Уничтожаем старый эксперимент
             Experiment::destroy_instance();
-            Experiment::get_instance(variables, std::vector<Variable>());
-            
+
+            // Создаем новый эксперимент с данными из парсера
+            Experiment* experiment = Experiment::get_instance(variables, std::vector<Variable>());
+
+            qDebug() << "Эксперимент создан. Переменных:" << experiment->get_variables_count();
+
             // Обрабатываем события UI
             QApplication::processEvents();
-            
+
+            // Обновляем модель таблицы
+            m_tableModel->refreshData();
+
+            // Обновляем таблицу инструментов переменных
+            updateVariableInstrumentsTable();
+
             // Обновляем ComboBox во всех графиках
             for (PlotTab& plotTab : m_plotTabs) {
                 if (plotTab.type == "График") {
                     PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
                     if (plotSettings) {
                         updateVariableComboBoxes(plotSettings);
+
+                        // Автоматически строим график для первых двух переменных
+                        if (experiment->get_variables_count() >= 2) {
+                            int xIndex = 0;
+                            int yIndex = 1;
+
+                            QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+                            QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
+
+                            if (xAxisCombo && xAxisCombo->count() > xIndex) {
+                                xAxisCombo->setCurrentIndex(xIndex);
+                            }
+                            if (yAxisCombo && yAxisCombo->count() > yIndex) {
+                                yAxisCombo->setCurrentIndex(yIndex);
+                            }
+
+                            // Строим график
+                            draw_line_plot(xIndex, yIndex, m_plotTabs.indexOf(plotTab));
+                        }
                     }
                 }
             }
-            
-            QMessageBox::information(this, "Успешно", "Файлы успешно загружены и обработаны.");
+
+            // Синхронизируем таблицы настроек графиков
+            syncPlotSettingsTables();
+
+            QApplication::restoreOverrideCursor();
+            QMessageBox::information(this, "Успешно",
+                QString("Файлы успешно загружены и обработаны.\n"
+                       "Загружено: %1 переменных\n"
+                       "Измерений: %2")
+                .arg(variables.size())
+                .arg(variables.empty() ? 0 : variables[0].get_measurements_count()));
         }
         else
         {
             QMessageBox::critical(this,
                 "Ошибка выбора файлов",
                 "Пожалуйста, выберите ровно два файла: один CSV и один JSON");
-
             return;
         }
     }
@@ -768,15 +871,15 @@ void MainWindow::addTextBlockToReport()
     if (!layout) {
         return;
     }
-    
+
     QWidget* contentWidget = ui->reportContentWidget;
 
     TextReportBlock* block = new TextReportBlock(contentWidget);
     QFrame* frame = block->createWidget(contentWidget, layout);
     m_reportBlocks.append(block);
-    
+
     layout->addWidget(frame);
-    
+
     connectReportBlockDeletion(frame, block);
 }
 
@@ -786,15 +889,15 @@ void MainWindow::addTableBlockToReport()
     if (!layout) {
         return;
     }
-    
+
     QWidget* contentWidget = ui->reportContentWidget;
 
     TableReportBlock* block = new TableReportBlock(m_tableModel, contentWidget);
     QFrame* frame = block->createWidget(contentWidget, layout);
     m_reportBlocks.append(block);
-    
+
     layout->addWidget(frame);
-    
+
     connectReportBlockDeletion(frame, block);
 }
 
@@ -804,7 +907,7 @@ void MainWindow::addPlotBlockToReport()
     if (!layout) {
         return;
     }
-    
+
     QWidget* contentWidget = ui->reportContentWidget;
 
     int currentIndex = ui->tabPlot->currentIndex();
@@ -821,9 +924,9 @@ void MainWindow::addPlotBlockToReport()
     PlotReportBlock* block = new PlotReportBlock(pixmap, contentWidget);
     QFrame* frame = block->createWidget(contentWidget, layout);
     m_reportBlocks.append(block);
-    
+
     layout->addWidget(frame);
-    
+
     connectReportBlockDeletion(frame, block);
 }
 
@@ -896,24 +999,25 @@ void MainWindow::saveReport()
 
     QMessageBox::information(this, "", QString("Отчет успешно сохранен в файл:\n%1").arg(fileName));
 }
+
 void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
 {
     if (!plotSettings) {
         return;
     }
-    
+
     Experiment* experiment = Experiment::get_instance();
     if (!experiment) {
         return;
     }
-    
+
     QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
     QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-    
+
     if (!xAxisCombo || !yAxisCombo) {
         return;
     }
-    
+
     // Сохраняем текущие выбранные индексы (если ComboBox уже заполнен)
     int currentXIndex = -1;
     int currentYIndex = -1;
@@ -923,7 +1027,7 @@ void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
     if (yAxisCombo->count() > 0) {
         currentYIndex = yAxisCombo->currentData().toInt();
     }
-    
+
     xAxisCombo->clear();
     yAxisCombo->clear();
 
@@ -972,7 +1076,7 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
     if (!graph || !settingsTable || rowIndex < 0 || rowIndex >= settingsTable->rowCount()) {
         return;
     }
-    
+
     // Проверяем, включена ли отрисовка
     QTableWidgetItem* enabledItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnEnabled);
     if (enabledItem && enabledItem->checkState() != Qt::Checked) {
@@ -980,7 +1084,7 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
         return;
     }
     graph->setVisible(true);
-    
+
     // Тип линии
     QTableWidgetItem* lineTypeItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnLineType);
     if (lineTypeItem) {
@@ -993,7 +1097,7 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
             graph->setLineStyle(QCPGraph::lsStepLeft);
         }
     }
-    
+
     // Ширина линии
     QTableWidgetItem* widthItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnWidth);
     if (widthItem) {
@@ -1005,14 +1109,14 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
             graph->setPen(pen);
         }
     }
-    
+
     // Тип точки
     QTableWidgetItem* pointTypeItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnPointType);
     QCPScatterStyle scatterStyle = graph->scatterStyle();
     if (pointTypeItem) {
         QString pointType = pointTypeItem->text();
         QCPScatterStyle::ScatterShape shape = QCPScatterStyle::ssNone;
-        
+
         if (pointType == "Круг" || pointType == "circle") {
             shape = QCPScatterStyle::ssCircle;
         } else if (pointType == "Квадрат" || pointType == "square") {
@@ -1026,10 +1130,10 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
         } else if (pointType == "Без точки" || pointType == "none") {
             shape = QCPScatterStyle::ssNone;
         }
-        
+
         scatterStyle.setShape(shape);
     }
-    
+
     // Размер точки
     QTableWidgetItem* pointSizeItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnPointSize);
     if (pointSizeItem) {
@@ -1039,7 +1143,7 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
             scatterStyle.setSize(size);
         }
     }
-    
+
     // Цвет
     QTableWidgetItem* colorItem = settingsTable->item(rowIndex, PlotSettingsWidget::ColumnColor);
     if (colorItem) {
@@ -1049,16 +1153,15 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
             QPen pen = graph->pen();
             pen.setColor(color);
             graph->setPen(pen);
-            
+
             scatterStyle.setPen(QPen(color));
             scatterStyle.setBrush(QBrush(color));
         }
     }
-    
+
     graph->setScatterStyle(scatterStyle);
 }
 
-//Добавить из настроек графика, что отображать
 void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
 {
     if (m_plotTabs.empty()) {
@@ -1070,56 +1173,71 @@ void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
     }
 
     PlotTab& plot = m_plotTabs[plot_tab_index];
-    
+
     Experiment* experiment = Experiment::get_instance();
     if (!experiment) {
         return;
     }
-    
+
+    if (experiment->get_variables_count() == 0) {
+        return;
+    }
+
     if (first_in < 0 || second_in < 0 ||
         first_in >= static_cast<int>(experiment->get_variables_count()) ||
         second_in >= static_cast<int>(experiment->get_variables_count())) {
         return;
     }
 
-    Variable variable_first = experiment->get_variable(first_in);
-    Variable variable_second = experiment->get_variable(second_in);
+    Variable& variable_first = experiment->get_variable(first_in);
+    Variable& variable_second = experiment->get_variable(second_in);
 
-        // Получаем измерения из выбранных переменных
+    // Получаем измерения из выбранных переменных
     const std::vector<double>& xMeasurements = variable_first.get_measurements();
     const std::vector<double>& yMeasurements = variable_second.get_measurements();
-    
-    // Преобразуем в QVector
-    QVector<double> xQvector = QVector<double>(xMeasurements.begin(), xMeasurements.end());
-    QVector<double> yQvector = QVector<double>(yMeasurements.begin(), yMeasurements.end());
-    
-    // Проверяем, что есть данные для отображения
-    if (xQvector.isEmpty() || yQvector.isEmpty()) {
+
+    if (xMeasurements.empty() || yMeasurements.empty()) {
         return;
     }
-    
+
+    // Определяем минимальную длину
+    size_t minSize = std::min(xMeasurements.size(), yMeasurements.size());
+
+    // Преобразуем в QVector
+    QVector<double> xQvector, yQvector;
+    xQvector.reserve(static_cast<int>(minSize));
+    yQvector.reserve(static_cast<int>(minSize));
+
+    for (size_t i = 0; i < minSize; ++i) {
+        xQvector.append(xMeasurements[i]);
+        yQvector.append(yMeasurements[i]);
+    }
+
     // Добавляем или обновляем график
     if (plot.plot->graphCount() == 0) {
         plot.plot->addGraph();
     }
-    
+
     QCPGraph* graph = plot.plot->graph(0);
 
     graph->setAdaptiveSampling(false);
-    
+
     // Применяем настройки из PlotSettingsWidget, если они есть
-    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plot.settingsTab);
-    if (plotSettings && plotSettings->settingsTable()->rowCount() > 0) {
-        // Применяем настройки из первой строки (можно расширить для нескольких графиков)
-        applyPlotSettingsFromTable(graph, plotSettings->settingsTable(), 0);
+    if (plot.settingsTable && plot.settingsTable->rowCount() > 0) {
+        applyPlotSettingsFromTable(graph, plot.settingsTable, 0);
     } else {
         // Устанавливаем стиль линии по умолчанию
         graph->setLineStyle(QCPGraph::lsLine);
+        graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::blue, Qt::white, 6));
     }
-    
+
     // Устанавливаем данные
     graph->setData(xQvector, yQvector);
-    
+
+    // Настраиваем оси
+    plot.plot->xAxis->setLabel(QString::fromStdString(variable_first.get_name_tables()));
+    plot.plot->yAxis->setLabel(QString::fromStdString(variable_second.get_name_tables()));
+
     // Обновляем оси и перерисовываем
     plot.plot->rescaleAxes();
     plot.plot->replot();
@@ -1127,7 +1245,7 @@ void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
 
 void MainWindow::on_export_data_triggered()
 {
-    // Диалог выбора двух файлов: CSV и JSON 
+    // Диалог выбора двух файлов: CSV и JSON
     QFileDialog dialog(this);
 
     dialog.setAcceptMode(QFileDialog::AcceptOpen);
@@ -1235,4 +1353,3 @@ void MainWindow::on_export_data_triggered()
         }
     }
 }
-
