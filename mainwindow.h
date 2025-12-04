@@ -43,7 +43,7 @@ private slots:
     void addInstrument();
     void removeInstrument();
     void onInstrumentChanged(QTableWidgetItem *item);
-    
+
     // Слоты из ветки main (дополнительный функционал)
     void onPlotSettingsTabChanged(int index);
     void onPlotTabChanged(int index);
@@ -52,12 +52,10 @@ private slots:
     void saveReport();
     void onInstrumentCellDoubleClicked(int row, int column);
     void removeGraph(int index = -1);
-    //void updateInstrumentTexts();
     void addTextBlockToReport();
     void addTableBlockToReport();
     void addPlotBlockToReport();
     void on_import_data_triggered();
-
     void on_export_data_triggered();
 
 private:
@@ -86,21 +84,35 @@ private:
         QCustomPlot* plot;
         QWidget* settingsTab;
         QTableWidget* settingsTable;
+
+        // Добавляем оператор сравнения как const
+        bool operator==(const PlotTab& other) const {
+            return name == other.name &&
+                   type == other.type &&
+                   plot == other.plot &&
+                   settingsTab == other.settingsTab &&
+                   settingsTable == other.settingsTable;
+        }
+
+        // Можно добавить и оператор != для полноты
+        bool operator!=(const PlotTab& other) const {
+            return !(*this == other);
+        }
     };
 
 private:
     Ui::MainWindow *ui;
-    
+
     // Общие модели и данные
     TableModel* m_tableModel;
     InstrumentsModel* m_instrumentsModel;
     std::vector<std::shared_ptr<Instrument>> m_instruments;
-    
+
     // из ветки Gleb
     ComboItemDelegate* m_instrumentDelegate;
     ComboItemDelegate* m_errorTypeDelegate;
     std::shared_ptr<Instrument> m_noInstrument;
-    
+
     // Из ветки main
     QMap<int, QString> m_columnTags; // Хранилище тегов столбцов
     QList<PlotTab> m_plotTabs; // Список динамически добавленных графиков
