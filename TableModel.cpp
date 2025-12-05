@@ -2,7 +2,6 @@
 #include "Variable.h"
 #include "Instrument.h"
 #include <QModelIndex>
-#include <QDebug>
 
 TableModel::TableModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -60,7 +59,6 @@ QVariant TableModel::data(const QModelIndex &index, int role) const
             double value = variable.get_measurement(row);
 
             if (role == Qt::DisplayRole) {
-                // ДОБАВЛЯЕМ ОТОБРАЖЕНИЕ ПОГРЕШНОСТИ
                 double error = variable.get_error_instrument(0, value);
                 if (error > 0) {
                     return QString("%1 ± %2").arg(value, 0, 'f', 3).arg(error, 0, 'f', 3);
@@ -113,8 +111,6 @@ bool TableModel::setData(const QModelIndex &index, const QVariant &value, int ro
     if (!index.isValid() || role != Qt::EditRole)
         return false;
 
-    qDebug() << "setData called:" << index.row() << index.column() << value;
-
     auto experiment = Experiment::get_instance();
     if (!experiment)
         return false;
@@ -131,17 +127,13 @@ bool TableModel::setData(const QModelIndex &index, const QVariant &value, int ro
     double doubleValue = value.toDouble(&ok);
 
     if (!ok) {
-        qDebug() << "Failed to convert to double";
         return false;
     }
 
-    // Убеждаемся, что есть достаточно измерений
     while (static_cast<int>(variable.get_measurements_count()) <= row) {
-        qDebug() << "Adding measurement at row" << row;
         variable.add_measurement(0.0);
     }
 
-    qDebug() << "Setting measurement:" << row << "=" << doubleValue;
     variable.set_measurement(row, doubleValue);
 
     emit dataChanged(index, index, {role});
@@ -163,19 +155,7 @@ Qt::ItemFlags TableModel::flags(const QModelIndex &index) const
 void TableModel::refreshData()
 {
     beginResetModel();
-
-    // Принудительно обновляем данные
-    auto experiment = Experiment::get_instance();
-    if (experiment) {
-        qDebug() << "TableModel refreshData: variables count =" << experiment->get_variables_count();
-        if (experiment->get_variables_count() > 0) {
-            qDebug() << "First variable measurements count =" << experiment->get_variable(0).get_measurements_count();
-        }
-    }
-
     endResetModel();
-
-    // Испускаем сигналы об изменении данных
     emit dataChanged(createIndex(0, 0),
                     createIndex(rowCount() - 1, columnCount() - 1));
     emit layoutChanged();

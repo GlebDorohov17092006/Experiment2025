@@ -52,10 +52,12 @@ private slots:
     void saveReport();
     void onInstrumentCellDoubleClicked(int row, int column);
     void removeGraph(int index = -1);
+    //void updateInstrumentTexts();
     void addTextBlockToReport();
     void addTableBlockToReport();
     void addPlotBlockToReport();
     void on_import_data_triggered();
+
     void on_export_data_triggered();
 
 private:
@@ -85,18 +87,13 @@ private:
         QWidget* settingsTab;
         QTableWidget* settingsTable;
 
-        // Добавляем оператор сравнения как const
+        // ТОЛЬКО ЭТО ДОБАВЛЯЕМ ↓↓↓
         bool operator==(const PlotTab& other) const {
             return name == other.name &&
                    type == other.type &&
                    plot == other.plot &&
                    settingsTab == other.settingsTab &&
                    settingsTable == other.settingsTable;
-        }
-
-        // Можно добавить и оператор != для полноты
-        bool operator!=(const PlotTab& other) const {
-            return !(*this == other);
         }
     };
 
