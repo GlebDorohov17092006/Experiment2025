@@ -21,6 +21,7 @@ public:
     std::string get_name_calculated() const;
     double get_error_instrument(size_t index = 0, double value = 0.0) const;
     std::string get_name_instrument() const;
+    Instrument* get_instrument() const;
     size_t get_measurements_count() const;
     void set_measurement(size_t index, double value);
     void set_name_tables(const std::string &name);

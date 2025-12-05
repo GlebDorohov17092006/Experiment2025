@@ -82,8 +82,6 @@ std::vector<Variable> parser_csv(const std::string& filename)
                 {
                     variables[num_of_sell].add_measurement(value);
                 }
-
-                qDebug() << value << "\n";
             }
 
             num_of_sell += 1;
@@ -133,15 +131,15 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
                 continue;
             }
             
-            std::string name_instrument = instruments_data["Variables"][variable_name];
+            std::string name_instrument = instruments_data["Variables"][variable_name].get<std::string>();
             
             // Проверяем, существует ли инструмент в JSON
             if (!instruments_data["Instruments"].contains(name_instrument)) {
                 continue;
             }
             
-            std::string type_of_error = instruments_data["Instruments"][name_instrument]["type"];
-            double value_of_error = instruments_data["Instruments"][name_instrument]["error"];
+            std::string type_of_error = instruments_data["Instruments"][name_instrument]["type"].get<std::string>();
+            double value_of_error = instruments_data["Instruments"][name_instrument]["error"].get<double>();
 
             //Creating instrument on heap and adding it to each variable
             if(type_of_error == "Absolute")
@@ -149,7 +147,7 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
                 AbsoluteInstrument* instrument = new AbsoluteInstrument(name_instrument, value_of_error);
                 curr_variable.add_instrument(instrument);
             }
-            else
+            else if(type_of_error == "Relative")
             {
                 RelativeInstrument* instrument = new RelativeInstrument(name_instrument, value_of_error);
                 curr_variable.add_instrument(instrument);

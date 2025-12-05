@@ -73,6 +73,11 @@ std::string Variable::get_name_instrument() const
     return instrument->get_name();
 }
 
+Instrument* Variable::get_instrument() const
+{
+    return instrument;
+}
+
 double Variable::get_error_instrument(size_t index, double value) const
 {
     if (instrument == nullptr)

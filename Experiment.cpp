@@ -18,6 +18,12 @@ Experiment *Experiment::get_instance(std::vector<Variable> variables,
     {
         instance = new Experiment(variables, calculated_variables);
     }
+    else if (!variables.empty() || !calculated_variables.empty())
+    {
+        // Обновляем переменные, если они переданы и instance уже существует
+        instance->variables = variables;
+        instance->calculated_variables = calculated_variables;
+    }
     return instance;
 }
 

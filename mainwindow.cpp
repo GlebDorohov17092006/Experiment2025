@@ -9,6 +9,7 @@
 #include "CombinedInstrument.h"
 #include "ComboItemDelegate.h"
 #include "parser.h"
+#include "json.hpp"
 #include "qcustomplot.h"
 #include "basesettingswidget.h"
 #include "TextReportBlock.h"
@@ -26,6 +27,7 @@
 #include <QSet>
 #include <QMap>
 #include <QDialog>
+#include <map>
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QDialogButtonBox>
@@ -228,6 +230,9 @@ void MainWindow::updateVariableInstrumentsTable()
     }
     ui->variableInstrumentsTable->setHorizontalHeaderLabels(headers);
 
+    // Блокируем сигналы, чтобы избежать вызова onInstrumentChanged при установке текста
+    ui->variableInstrumentsTable->blockSignals(true);
+    
     for (size_t i = 0; i < variablesCount; ++i) {
         auto& var = experiment->get_variable(i);
 
@@ -238,6 +243,9 @@ void MainWindow::updateVariableInstrumentsTable()
 
         ui->variableInstrumentsTable->setItem(0, static_cast<int>(i), item);
     }
+    
+    // Разблокируем сигналы
+    ui->variableInstrumentsTable->blockSignals(false);
 
     // Растягиваем заголовки
     ui->variableInstrumentsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -772,17 +780,7 @@ void MainWindow::on_import_data_triggered()
 
             std::vector<Variable> variables;
             try {
-                qDebug() << "Начало парсинга...";
-                qDebug() << "CSV файл:" << csvFile;
-                qDebug() << "JSON файл:" << jsonFile;
-
                 variables = parser(csvFile.toStdString(), jsonFile.toStdString());
-
-                qDebug() << "Парсинг завершен. Переменных:" << variables.size();
-                if (!variables.empty()) {
-                    qDebug() << "Имя первой переменной:" << QString::fromStdString(variables[0].get_name_tables());
-                    qDebug() << "Количество измерений в первой переменной:" << variables[0].get_measurements_count();
-                }
             } catch (const std::exception& e) {
                 QApplication::restoreOverrideCursor();
                 QMessageBox::critical(this, "Ошибка парсинга",
@@ -803,8 +801,6 @@ void MainWindow::on_import_data_triggered()
 
             // Создаем новый эксперимент с данными из парсера
             Experiment* experiment = Experiment::get_instance(variables, std::vector<Variable>());
-
-            qDebug() << "Эксперимент создан. Переменных:" << experiment->get_variables_count();
 
             // Обрабатываем события UI
             QApplication::processEvents();
@@ -1342,6 +1338,91 @@ void MainWindow::on_export_data_triggered()
                 }
             }
             file.close();
+
+                // Сохранение JSON файла, если он выбран
+            if (!jsonFile.isEmpty())
+            {
+                using json = nlohmann::json;
+                json json_data;
+
+                // Собираем уникальные инструменты
+                std::map<std::string, std::pair<std::string, double>> instruments_map; // name -> (type, error)
+                json variables_json = json::object(); // Явно инициализируем как объект, а не null
+
+                for (size_t curr_num_of_variable = 0; curr_num_of_variable < num_of_variables; ++curr_num_of_variable)
+                {
+                    Variable& variable = experiment->get_variable(curr_num_of_variable);
+                    std::string variable_name = variable.get_name_tables();
+                    Instrument* instrument = variable.get_instrument();
+
+                    if (instrument != nullptr)
+                    {
+                        std::string instrument_name = instrument->get_name();
+                        
+                        // Пропускаем инструмент "(нет инструмента)"
+                        if (instrument_name != "(нет инструмента)")
+                        {
+                            // Определяем тип инструмента и получаем значение погрешности
+                            std::string error_type;
+                            double error_value = 0.0;
+
+                            if (AbsoluteInstrument* abs_instr = dynamic_cast<AbsoluteInstrument*>(instrument))
+                            {
+                                error_type = "Absolute";
+                                error_value = abs_instr->get_error(0, 0);
+                            }
+                            else if (RelativeInstrument* rel_instr = dynamic_cast<RelativeInstrument*>(instrument))
+                            {
+                                error_type = "Relative";
+                                error_value = rel_instr->get_error(0, 1.0); // Для относительной погрешности используем значение при value=1.0
+                            }
+
+                            // Добавляем инструмент в map только если тип определен (Absolute или Relative)
+                            if (!error_type.empty())
+                            {
+                                // Добавляем инструмент в map, если его еще нет
+                                if (instruments_map.find(instrument_name) == instruments_map.end())
+                                {
+                                    instruments_map[instrument_name] = std::make_pair(error_type, error_value);
+                                }
+
+                                // Добавляем связь переменной с инструментом
+                                variables_json[variable_name] = instrument_name;
+                            }
+                        }
+                    }
+                }
+
+                // Формируем секцию Instruments
+                json instruments_json = json::object(); // Явно инициализируем как объект, а не null
+                for (const auto& [name, type_error] : instruments_map)
+                {
+                    instruments_json[name]["type"] = type_error.first;
+                    instruments_json[name]["error"] = type_error.second;
+                }
+
+                json_data["Instruments"] = instruments_json;
+                json_data["Variables"] = variables_json;
+
+                // Сохраняем JSON в файл с правильным форматированием
+                QFile json_file(jsonFile);
+                if (json_file.open(QIODevice::WriteOnly | QIODevice::Text))
+                {
+                    QTextStream json_stream(&json_file);
+                    // Используем dump(2) для форматирования с отступами в 2 пробела
+                    std::string json_string = json_data.dump(2);
+                    // Заменяем форматирование на точное соответствие примеру (пробелы вокруг двоеточий)
+                    json_stream << QString::fromStdString(json_string);
+                    json_file.close();
+                }
+                else
+                {
+                    QMessageBox::warning(this,
+                                        "Предупреждение",
+                                        "CSV файл сохранен, но не удалось открыть JSON-файл для записи.");
+                }
+            }
+
             QMessageBox::information(this, "Успешно","Данные успешно экспортированы.");
         }
         else
