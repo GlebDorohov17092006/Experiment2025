@@ -1,16 +1,21 @@
 {
-  "Instruments" : {
-    "Voltmeter" : {
-      "type" : "Relative",
-      "error" : 0.050
+  "Instruments": {
+    "Ammeter": {
+      "error": 0.001,
+      "type": "Absolute"
     },
-    "Ammeter" : {
-      "type" : "Absolute",
-      "error" : 0.001
+    "Voltmeter": {
+      "error": 0.05,
+      "type": "Relative"
+    },
+    "Линейка": {
+      "error": 0.15,
+      "type": "Absolute"
     }
   },
-  "Variables" : {
-    "U" : "Voltmeter",
-    "I" : "Ammeter"
+  "Variables": {
+    "I": "Ammeter",
+    "R": "Линейка",
+    "U": "Voltmeter"
   }
 }

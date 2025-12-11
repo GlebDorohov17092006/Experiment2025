@@ -698,36 +698,21 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
                         return;
                     }
 
-                    // Если изменилась галочка (ColumnEnabled), перестраиваем график
+                    // Если изменилась галочка (ColumnEnabled), перестраиваем все графики
                     if (column == PlotSettingsWidget::ColumnEnabled) {
-                        // Убеждаемся, что только одна переменная выбрана для оси OX
-                        QTableWidget* table = plotSettings->settingsTable();
-                        for (int i = 0; i < table->rowCount(); ++i) {
-                            if (i != row) {
-                                QTableWidgetItem* item = table->item(i, PlotSettingsWidget::ColumnEnabled);
-                                if (item && item->checkState() == Qt::Checked) {
-                                    item->setCheckState(Qt::Unchecked);
-                                }
-                            }
-                        }
-                        // Перестраиваем график
+                        // Разрешаем несколько галочек - каждая создает свой график
                         rebuildPlotFromSettings(tabIndex);
-                    } else if (plotTab.plot->graphCount() > 0 && row >= 0) {
-                        // Для других изменений применяем настройки стиля из строки с галочкой (переменная для оси X)
+                    } else if (row >= 0) {
+                        // Для других изменений применяем настройки стиля к соответствующему графику
                         QTableWidget* table = plotSettings->settingsTable();
-                        int xRowIndex = -1;
-                        for (int i = 0; i < table->rowCount(); ++i) {
-                            QTableWidgetItem* item = table->item(i, PlotSettingsWidget::ColumnEnabled);
-                            if (item && item->checkState() == Qt::Checked) {
-                                xRowIndex = i;
-                                break;
+                        QTableWidgetItem* enabledItem = table->item(row, PlotSettingsWidget::ColumnEnabled);
+                        if (enabledItem && enabledItem->checkState() == Qt::Checked) {
+                            // Находим график, соответствующий этой строке
+                            QCPGraph* graph = findGraphForVariable(plotTab.plot, row);
+                            if (graph) {
+                                applyPlotSettingsFromTable(graph, table, row);
+                                plotTab.plot->replot();
                             }
-                        }
-                        // Если строка с галочкой найдена и это та же строка, что изменилась, применяем настройки
-                        if (xRowIndex >= 0 && xRowIndex == row) {
-                            QCPGraph* graph = plotTab.plot->graph(0);
-                            applyPlotSettingsFromTable(graph, table, xRowIndex);
-                            plotTab.plot->replot();
                         }
                     }
                 }
@@ -1226,6 +1211,27 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
     graph->setScatterStyle(scatterStyle);
 }
 
+QCPGraph* MainWindow::findGraphForVariable(QCustomPlot* plot, int variableIndex)
+{
+    if (!plot) {
+        return nullptr;
+    }
+    
+    // Ищем график с именем, соответствующим индексу переменной
+    for (int i = 0; i < plot->graphCount(); ++i) {
+        QCPGraph* graph = plot->graph(i);
+        // Используем имя графика для хранения индекса переменной X
+        QString graphName = graph->name();
+        bool ok;
+        int graphVarIndex = graphName.toInt(&ok);
+        if (ok && graphVarIndex == variableIndex) {
+            return graph;
+        }
+    }
+    
+    return nullptr;
+}
+
 void MainWindow::rebuildPlotFromSettings(int plot_tab_index)
 {
     if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
@@ -1243,27 +1249,6 @@ void MainWindow::rebuildPlotFromSettings(int plot_tab_index)
         return;
     }
 
-    // Находим переменную для оси X (по галочке в таблице)
-    int xIndex = -1;
-    QTableWidget* settingsTable = plotSettings->settingsTable();
-    for (int i = 0; i < settingsTable->rowCount(); ++i) {
-        QTableWidgetItem* enabledItem = settingsTable->item(i, PlotSettingsWidget::ColumnEnabled);
-        if (enabledItem && enabledItem->checkState() == Qt::Checked) {
-            xIndex = i;
-            break;
-        }
-    }
-
-    // Если галочка не установлена, очищаем график и выходим
-    if (xIndex < 0) {
-        PlotTab& plotTab = m_plotTabs[plot_tab_index];
-        if (plotTab.plot) {
-            plotTab.plot->clearGraphs();
-            plotTab.plot->replot();
-        }
-        return;
-    }
-
     // Получаем переменную для оси Y из ComboBox
     QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
     if (!yAxisCombo || yAxisCombo->count() == 0) {
@@ -1271,14 +1256,71 @@ void MainWindow::rebuildPlotFromSettings(int plot_tab_index)
     }
     int yIndex = yAxisCombo->currentData().toInt();
 
-    if (yIndex < 0 || 
-        xIndex >= static_cast<int>(experiment->get_variables_count()) ||
-        yIndex >= static_cast<int>(experiment->get_variables_count())) {
+    if (yIndex < 0 || yIndex >= static_cast<int>(experiment->get_variables_count())) {
         return;
     }
 
-    // Строим график
-    draw_line_plot(xIndex, yIndex, plot_tab_index);
+    QTableWidget* settingsTable = plotSettings->settingsTable();
+    
+    // Собираем список переменных X с установленными галочками
+    QList<int> enabledXIndices;
+    for (int i = 0; i < settingsTable->rowCount(); ++i) {
+        QTableWidgetItem* enabledItem = settingsTable->item(i, PlotSettingsWidget::ColumnEnabled);
+        if (enabledItem && enabledItem->checkState() == Qt::Checked) {
+            if (i < static_cast<int>(experiment->get_variables_count())) {
+                enabledXIndices.append(i);
+            }
+        }
+    }
+
+    // Удаляем графики, для которых галочка снята
+    QList<QCPGraph*> graphsToRemove;
+    for (int i = 0; i < plotTab.plot->graphCount(); ++i) {
+        QCPGraph* graph = plotTab.plot->graph(i);
+        QString graphName = graph->name();
+        bool ok;
+        int graphVarIndex = graphName.toInt(&ok);
+        if (ok && !enabledXIndices.contains(graphVarIndex)) {
+            graphsToRemove.append(graph);
+        }
+    }
+    
+    for (QCPGraph* graph : graphsToRemove) {
+        plotTab.plot->removeGraph(graph);
+    }
+
+    // Создаем или обновляем графики для всех установленных галочек
+    for (int xIndex : enabledXIndices) {
+        QCPGraph* graph = findGraphForVariable(plotTab.plot, xIndex);
+        
+        if (!graph) {
+            // Создаем новый график
+            graph = plotTab.plot->addGraph();
+            graph->setName(QString::number(xIndex)); // Сохраняем индекс переменной X в имени графика
+        }
+        
+        // Строим или обновляем график
+        draw_single_graph(xIndex, yIndex, plot_tab_index, graph);
+    }
+
+    // Обновляем оси и перерисовываем
+    if (plotTab.plot->graphCount() > 0) {
+        // Настраиваем названия осей из QLineEdit
+        PlotSettingsWidget* plotSettingsWidget = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+        if (plotSettingsWidget) {
+            QString xLabel = plotSettingsWidget->xAxisLabelEdit()->text();
+            QString yLabel = plotSettingsWidget->yAxisLabelEdit()->text();
+            
+            if (!xLabel.isEmpty()) {
+                plotTab.plot->xAxis->setLabel(xLabel);
+            }
+            if (!yLabel.isEmpty()) {
+                plotTab.plot->yAxis->setLabel(yLabel);
+            }
+        }
+        plotTab.plot->rescaleAxes();
+    }
+    plotTab.plot->replot();
 }
 
 void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
@@ -1332,12 +1374,72 @@ void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
         yQvector.append(yMeasurements[i]);
     }
 
-    // Добавляем или обновляем график
+    // Эта функция теперь не используется напрямую, используем draw_single_graph
+    // Оставляем для обратной совместимости, но она не должна вызываться
+    QCPGraph* graph = nullptr;
     if (plot.plot->graphCount() == 0) {
-        plot.plot->addGraph();
+        graph = plot.plot->addGraph();
+    } else {
+        graph = plot.plot->graph(0);
+    }
+    
+    draw_single_graph(first_in, second_in, plot_tab_index, graph);
+}
+
+void MainWindow::draw_single_graph(int first_in, int second_in, int plot_tab_index, QCPGraph* graph)
+{
+    if (!graph) {
+        return;
+    }
+    
+    if (m_plotTabs.empty()) {
+        return;
     }
 
-    QCPGraph* graph = plot.plot->graph(0);
+    if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
+        return;
+    }
+
+    PlotTab& plot = m_plotTabs[plot_tab_index];
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+
+    if (experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    if (first_in < 0 || second_in < 0 ||
+        first_in >= static_cast<int>(experiment->get_variables_count()) ||
+        second_in >= static_cast<int>(experiment->get_variables_count())) {
+        return;
+    }
+
+    Variable& variable_first = experiment->get_variable(first_in);
+    Variable& variable_second = experiment->get_variable(second_in);
+
+    // Получаем измерения из выбранных переменных
+    const std::vector<double>& xMeasurements = variable_first.get_measurements();
+    const std::vector<double>& yMeasurements = variable_second.get_measurements();
+
+    if (xMeasurements.empty() || yMeasurements.empty()) {
+        return;
+    }
+
+    // Определяем минимальную длину
+    size_t minSize = std::min(xMeasurements.size(), yMeasurements.size());
+
+    // Преобразуем в QVector
+    QVector<double> xQvector, yQvector;
+    xQvector.reserve(static_cast<int>(minSize));
+    yQvector.reserve(static_cast<int>(minSize));
+
+    for (size_t i = 0; i < minSize; ++i) {
+        xQvector.append(xMeasurements[i]);
+        yQvector.append(yMeasurements[i]);
+    }
 
     graph->setAdaptiveSampling(false);
 

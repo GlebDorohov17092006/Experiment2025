@@ -75,6 +75,8 @@ private:
     void applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* settingsTable, int rowIndex);
     void updateVariableComboBoxes(PlotSettingsWidget* plotSettings);
     void rebuildPlotFromSettings(int tabIndex);
+    QCPGraph* findGraphForVariable(QCustomPlot* plot, int variableIndex);
+    void draw_single_graph(int first_in, int second_in, int plot_tab_index, QCPGraph* graph);
     QString getInstrumentDisplayText(int instrumentIndex);
     void addDynamicPlotTab(const QString& plotType);
 
