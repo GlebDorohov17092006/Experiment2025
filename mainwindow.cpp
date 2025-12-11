@@ -89,10 +89,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableViewInstruments->setItemDelegateForColumn(1, m_errorTypeDelegate);
 
     // Подключаем сигналы из ветки Gleb
-    connect(ui->addColumnButton, &QPushButton::clicked, this, &MainWindow::addColumn);
-    connect(ui->removeColumnButton, &QPushButton::clicked, this, &MainWindow::removeColumn);
-    // addRowButton подключен через UI файл, не дублируем здесь
-    connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
+    // addColumnButton, removeColumnButton, addRowButton, removeRowButton подключены через UI файл, не дублируем здесь
     connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
     connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
     connect(ui->variableInstrumentsTable, &QTableWidget::itemChanged, this, &MainWindow::onInstrumentChanged);
@@ -628,12 +625,24 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
     }
 
     // Настраиваем делегаты для редактирования ячеек
-    if (plotType == "График") {
-        PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(settingsWidget);
-        if (plotSettings) {
-            settingsWidget->setupDelegates(this);
+    settingsWidget->setupDelegates(this);
 
+    ui->tabPlotSettings->addTab(settingsWidget, tabName);
+
+    // Сохраняем информацию о графике
+    PlotTab plotTab;
+    plotTab.name = tabName;
+    plotTab.type = plotType;
+    plotTab.plot = plot;
+    plotTab.settingsTab = settingsWidget;
+    plotTab.settingsTable = settingsTable;
+    m_plotTabs.append(plotTab);
+
+    // Настраиваем специфичные настройки для графиков
+    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(settingsWidget);
+    if (plotSettings) {
             // Синхронизируем таблицу с переменными (создает строки для всех переменных)
+            // Вызываем после добавления plotTab в m_plotTabs, чтобы syncPlotSettingsTables мог найти новый график
             syncPlotSettingsTables();
 
             // Заполняем ComboBox переменными из Experiment
@@ -668,19 +677,7 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
                     plotSettings->yAxisLabelEdit()->setText(xVarName);
                 }
             }
-        }
     }
-
-    ui->tabPlotSettings->addTab(settingsWidget, tabName);
-
-    // Сохраняем информацию о графике
-    PlotTab plotTab;
-    plotTab.name = tabName;
-    plotTab.type = plotType;
-    plotTab.plot = plot;
-    plotTab.settingsTab = settingsWidget;
-    plotTab.settingsTable = settingsTable;
-    m_plotTabs.append(plotTab);
 
     // Подключаем обработчик изменений в таблице настроек для графиков
     if (plotType == "График") {

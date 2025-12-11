@@ -28,7 +28,6 @@ void PlotSettingsWidget::setupDelegates(QWidget* parent)
     // Столбец типа линии
     ComboItemDelegate* lineTypeDelegate = new ComboItemDelegate(parent);
     lineTypeDelegate->addItem("Сплошная", "line");
-    lineTypeDelegate->addItem("Пунктирная", "none");
     lineTypeDelegate->addItem("Ступенчатая", "step");
     ui->settingsTable->setItemDelegateForColumn(ColumnLineType, lineTypeDelegate);
     
