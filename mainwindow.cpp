@@ -91,7 +91,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Подключаем сигналы из ветки Gleb
     connect(ui->addColumnButton, &QPushButton::clicked, this, &MainWindow::addColumn);
     connect(ui->removeColumnButton, &QPushButton::clicked, this, &MainWindow::removeColumn);
-    connect(ui->addRowButton, &QPushButton::clicked, this, &MainWindow::addRow);
+    // addRowButton подключен через UI файл, не дублируем здесь
     connect(ui->removeRowButton, &QPushButton::clicked, this, &MainWindow::removeRow);
     connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::addInstrument);
     connect(ui->pushButton_2, &QPushButton::clicked, this, &MainWindow::removeInstrument);
@@ -227,6 +227,11 @@ void MainWindow::updateVariableInstrumentsTable()
             headerName += "\n(" + tag + ")";
         }
         headers << headerName;
+        
+        // Если у переменной нет инструмента (nullptr), устанавливаем инструмент по умолчанию
+        if (var.get_instrument() == nullptr) {
+            var.add_instrument(m_noInstrument.get());
+        }
     }
     ui->variableInstrumentsTable->setHorizontalHeaderLabels(headers);
 
@@ -259,13 +264,32 @@ void MainWindow::addColumn()
 
     auto experiment = Experiment::get_instance();
 
-    std::vector<double> measurements(6, 0.0);
+    std::vector<double> measurements; // Пустой вектор - без измерений
     Variable newVar(measurements, name.toStdString(), "", m_noInstrument.get());
     experiment->add_variable(newVar);
 
     m_tableModel->refreshData();
     updateVariableInstrumentsTable();
     syncPlotSettingsTables();
+    
+    // Добавляем новую переменную в combobox для оси Y во всех графиках
+    for (PlotTab& plotTab : m_plotTabs) {
+        if (plotTab.type == "График") {
+            PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+            if (plotSettings) {
+                QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
+                if (yAxisCombo) {
+                    QString varName = name;
+                    varName.remove('\"');
+                    if (varName.isEmpty()) {
+                        varName = QString("Переменная %1").arg(experiment->get_variables_count());
+                    }
+                    int varIndex = static_cast<int>(experiment->get_variables_count() - 1);
+                    yAxisCombo->addItem(varName, varIndex);
+                }
+            }
+        }
+    }
 }
 
 void MainWindow::removeColumn()
@@ -499,7 +523,7 @@ void MainWindow::syncPlotSettingsTables()
                 // Добавляем значения по умолчанию
                 if (plotTab.type == "График") {
                     QTableWidgetItem* checkItem = new QTableWidgetItem();
-                    checkItem->setCheckState(Qt::Checked);
+                    checkItem->setCheckState(Qt::Unchecked); // Графики не отображаются по умолчанию
                     plotTab.settingsTable->setItem(i, 0, checkItem);
 
                     // Тип линии по умолчанию
@@ -609,37 +633,41 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
         if (plotSettings) {
             settingsWidget->setupDelegates(this);
 
-            // Добавляем начальную строку с настройками по умолчанию
-            int rowIndex = settingsTable->rowCount();
-            settingsTable->insertRow(rowIndex);
-
-            // Отрисовка (чекбокс)
-            QTableWidgetItem* enabledItem = new QTableWidgetItem();
-            enabledItem->setCheckState(Qt::Checked);
-            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnEnabled, enabledItem);
-
-            // Тип линии
-            QTableWidgetItem* lineTypeItem = new QTableWidgetItem("Сплошная");
-            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnLineType, lineTypeItem);
-
-            // Ширина линии
-            QTableWidgetItem* widthItem = new QTableWidgetItem("1");
-            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnWidth, widthItem);
-
-            // Тип точки
-            QTableWidgetItem* pointTypeItem = new QTableWidgetItem("Без точки");
-            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnPointType, pointTypeItem);
-
-            // Размер точки
-            QTableWidgetItem* pointSizeItem = new QTableWidgetItem("6");
-            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnPointSize, pointSizeItem);
-
-            // Цвет
-            QTableWidgetItem* colorItem = new QTableWidgetItem("#0000ff"); // Синий по умолчанию
-            settingsTable->setItem(rowIndex, PlotSettingsWidget::ColumnColor, colorItem);
+            // Синхронизируем таблицу с переменными (создает строки для всех переменных)
+            syncPlotSettingsTables();
 
             // Заполняем ComboBox переменными из Experiment
             updateVariableComboBoxes(plotSettings);
+
+            // Устанавливаем настройки по умолчанию (без галочек - графики не отображаются по умолчанию)
+            Experiment* experiment = Experiment::get_instance();
+            if (experiment && experiment->get_variables_count() > 0) {
+                // Убеждаемся, что все галочки сняты (графики не отображаются по умолчанию)
+                QTableWidget* settingsTable = plotSettings->settingsTable();
+                if (settingsTable && settingsTable->rowCount() > 0) {
+                    for (int i = 0; i < settingsTable->rowCount(); ++i) {
+                        QTableWidgetItem* item = settingsTable->item(i, PlotSettingsWidget::ColumnEnabled);
+                        if (item) {
+                            item->setCheckState(Qt::Unchecked);
+                        }
+                    }
+                }
+
+                // Устанавливаем названия осей по умолчанию
+                if (experiment->get_variables_count() >= 2) {
+                    QString xVarName = QString::fromStdString(experiment->get_variable(0).get_name_tables());
+                    xVarName.remove('\"');
+                    QString yVarName = QString::fromStdString(experiment->get_variable(1).get_name_tables());
+                    yVarName.remove('\"');
+                    plotSettings->xAxisLabelEdit()->setText(xVarName);
+                    plotSettings->yAxisLabelEdit()->setText(yVarName);
+                } else if (experiment->get_variables_count() == 1) {
+                    QString xVarName = QString::fromStdString(experiment->get_variable(0).get_name_tables());
+                    xVarName.remove('\"');
+                    plotSettings->xAxisLabelEdit()->setText(xVarName);
+                    plotSettings->yAxisLabelEdit()->setText(xVarName);
+                }
+            }
         }
     }
 
@@ -663,37 +691,76 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
 
             // Обработчик изменений в таблице настроек
             connect(settingsTable, &QTableWidget::cellChanged, this, [this, tabIndex](int row, int column) {
-                Q_UNUSED(column);
                 if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
                     PlotTab& plotTab = m_plotTabs[tabIndex];
-                    if (plotTab.plot->graphCount() > 0 && row >= 0) {
-                        QCPGraph* graph = plotTab.plot->graph(0);
-                        PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
-                        if (plotSettings) {
-                            applyPlotSettingsFromTable(graph, plotSettings->settingsTable(), row);
+                    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+                    if (!plotSettings) {
+                        return;
+                    }
+
+                    // Если изменилась галочка (ColumnEnabled), перестраиваем график
+                    if (column == PlotSettingsWidget::ColumnEnabled) {
+                        // Убеждаемся, что только одна переменная выбрана для оси OX
+                        QTableWidget* table = plotSettings->settingsTable();
+                        for (int i = 0; i < table->rowCount(); ++i) {
+                            if (i != row) {
+                                QTableWidgetItem* item = table->item(i, PlotSettingsWidget::ColumnEnabled);
+                                if (item && item->checkState() == Qt::Checked) {
+                                    item->setCheckState(Qt::Unchecked);
+                                }
+                            }
+                        }
+                        // Перестраиваем график
+                        rebuildPlotFromSettings(tabIndex);
+                    } else if (plotTab.plot->graphCount() > 0 && row >= 0) {
+                        // Для других изменений применяем настройки стиля из строки с галочкой (переменная для оси X)
+                        QTableWidget* table = plotSettings->settingsTable();
+                        int xRowIndex = -1;
+                        for (int i = 0; i < table->rowCount(); ++i) {
+                            QTableWidgetItem* item = table->item(i, PlotSettingsWidget::ColumnEnabled);
+                            if (item && item->checkState() == Qt::Checked) {
+                                xRowIndex = i;
+                                break;
+                            }
+                        }
+                        // Если строка с галочкой найдена и это та же строка, что изменилась, применяем настройки
+                        if (xRowIndex >= 0 && xRowIndex == row) {
+                            QCPGraph* graph = plotTab.plot->graph(0);
+                            applyPlotSettingsFromTable(graph, table, xRowIndex);
                             plotTab.plot->replot();
                         }
                     }
                 }
             });
 
-            // Обработчик изменения выбора переменных в ComboBox
-            QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+            // Обработчик изменения выбора переменной Y в ComboBox
             QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-
-            connect(xAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
+            connect(yAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
                 if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
-                    int xIndex = plotSettings->xAxisComboBox()->currentData().toInt();
-                    int yIndex = plotSettings->yAxisComboBox()->currentData().toInt();
-                    draw_line_plot(xIndex, yIndex, tabIndex);
+                    rebuildPlotFromSettings(tabIndex);
                 }
             });
 
-            connect(yAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
+            // Обработчик изменения названий осей
+            connect(plotSettings->xAxisLabelEdit(), &QLineEdit::textChanged, this, [this, tabIndex]() {
                 if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
-                    int xIndex = plotSettings->xAxisComboBox()->currentData().toInt();
-                    int yIndex = plotSettings->yAxisComboBox()->currentData().toInt();
-                    draw_line_plot(xIndex, yIndex, tabIndex);
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+                    if (plotSettings && plotTab.plot) {
+                        plotTab.plot->xAxis->setLabel(plotSettings->xAxisLabelEdit()->text());
+                        plotTab.plot->replot();
+                    }
+                }
+            });
+
+            connect(plotSettings->yAxisLabelEdit(), &QLineEdit::textChanged, this, [this, tabIndex]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+                    if (plotSettings && plotTab.plot) {
+                        plotTab.plot->yAxis->setLabel(plotSettings->yAxisLabelEdit()->text());
+                        plotTab.plot->replot();
+                    }
                 }
             });
         }
@@ -818,23 +885,41 @@ void MainWindow::on_import_data_triggered()
                     if (plotSettings) {
                         updateVariableComboBoxes(plotSettings);
 
-                        // Автоматически строим график для первых двух переменных
+                        // Устанавливаем названия осей по умолчанию (без автоматического построения графика)
                         if (experiment->get_variables_count() >= 2) {
                             int xIndex = 0;
                             int yIndex = 1;
 
-                            QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
-                            QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-
-                            if (xAxisCombo && xAxisCombo->count() > xIndex) {
-                                xAxisCombo->setCurrentIndex(xIndex);
+                            // Убеждаемся, что все галочки сняты (графики не отображаются по умолчанию)
+                            QTableWidget* settingsTable = plotSettings->settingsTable();
+                            if (settingsTable && settingsTable->rowCount() > xIndex) {
+                                for (int i = 0; i < settingsTable->rowCount(); ++i) {
+                                    QTableWidgetItem* item = settingsTable->item(i, PlotSettingsWidget::ColumnEnabled);
+                                    if (item) {
+                                        item->setCheckState(Qt::Unchecked);
+                                    }
+                                }
                             }
+
+                            // Устанавливаем переменную Y в ComboBox
+                            QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
                             if (yAxisCombo && yAxisCombo->count() > yIndex) {
                                 yAxisCombo->setCurrentIndex(yIndex);
                             }
 
-                            // Строим график
-                            draw_line_plot(xIndex, yIndex, m_plotTabs.indexOf(plotTab));
+                            // Устанавливаем названия осей по умолчанию
+                            QString xVarName = QString::fromStdString(experiment->get_variable(xIndex).get_name_tables());
+                            xVarName.remove('\"');
+                            QString yVarName = QString::fromStdString(experiment->get_variable(yIndex).get_name_tables());
+                            yVarName.remove('\"');
+                            plotSettings->xAxisLabelEdit()->setText(xVarName);
+                            plotSettings->yAxisLabelEdit()->setText(yVarName);
+
+                            // Очищаем график, так как галочки не установлены
+                            if (plotTab.plot) {
+                                plotTab.plot->clearGraphs();
+                                plotTab.plot->replot();
+                            }
                         }
                     }
                 }
@@ -1007,24 +1092,18 @@ void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
         return;
     }
 
-    QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
     QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
 
-    if (!xAxisCombo || !yAxisCombo) {
+    if (!yAxisCombo) {
         return;
     }
 
-    // Сохраняем текущие выбранные индексы (если ComboBox уже заполнен)
-    int currentXIndex = -1;
+    // Сохраняем текущий выбранный индекс (если ComboBox уже заполнен)
     int currentYIndex = -1;
-    if (xAxisCombo->count() > 0) {
-        currentXIndex = xAxisCombo->currentData().toInt();
-    }
     if (yAxisCombo->count() > 0) {
         currentYIndex = yAxisCombo->currentData().toInt();
     }
 
-    xAxisCombo->clear();
     yAxisCombo->clear();
 
     if (experiment->get_variables_count() == 0) {
@@ -1039,26 +1118,15 @@ void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
         if (varName.isEmpty()) {
             varName = QString("Переменная %1").arg(i + 1);
         }
-        xAxisCombo->addItem(varName, static_cast<int>(i));
         yAxisCombo->addItem(varName, static_cast<int>(i));
     }
 
-    // Устанавливаем значения по умолчанию, если они не были сохранены
-    if (currentXIndex < 0 || currentXIndex >= static_cast<int>(experiment->get_variables_count())) {
-        currentXIndex = 0; // Первая переменная по умолчанию
-    }
+    // Устанавливаем значение по умолчанию, если оно не было сохранено
     if (currentYIndex < 0 || currentYIndex >= static_cast<int>(experiment->get_variables_count())) {
         currentYIndex = (experiment->get_variables_count() > 1) ? 1 : 0; // Вторая переменная по умолчанию, или первая если только одна
     }
 
-    // Устанавливаем выбранные индексы
-    int xComboIndex = xAxisCombo->findData(currentXIndex);
-    if (xComboIndex >= 0) {
-        xAxisCombo->setCurrentIndex(xComboIndex);
-    } else if (xAxisCombo->count() > 0) {
-        xAxisCombo->setCurrentIndex(0);
-    }
-
+    // Устанавливаем выбранный индекс
     int yComboIndex = yAxisCombo->findData(currentYIndex);
     if (yComboIndex >= 0) {
         yAxisCombo->setCurrentIndex(yComboIndex);
@@ -1158,6 +1226,61 @@ void MainWindow::applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* setti
     graph->setScatterStyle(scatterStyle);
 }
 
+void MainWindow::rebuildPlotFromSettings(int plot_tab_index)
+{
+    if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
+        return;
+    }
+
+    PlotTab& plotTab = m_plotTabs[plot_tab_index];
+    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
+    if (!plotSettings) {
+        return;
+    }
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment || experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    // Находим переменную для оси X (по галочке в таблице)
+    int xIndex = -1;
+    QTableWidget* settingsTable = plotSettings->settingsTable();
+    for (int i = 0; i < settingsTable->rowCount(); ++i) {
+        QTableWidgetItem* enabledItem = settingsTable->item(i, PlotSettingsWidget::ColumnEnabled);
+        if (enabledItem && enabledItem->checkState() == Qt::Checked) {
+            xIndex = i;
+            break;
+        }
+    }
+
+    // Если галочка не установлена, очищаем график и выходим
+    if (xIndex < 0) {
+        PlotTab& plotTab = m_plotTabs[plot_tab_index];
+        if (plotTab.plot) {
+            plotTab.plot->clearGraphs();
+            plotTab.plot->replot();
+        }
+        return;
+    }
+
+    // Получаем переменную для оси Y из ComboBox
+    QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
+    if (!yAxisCombo || yAxisCombo->count() == 0) {
+        return;
+    }
+    int yIndex = yAxisCombo->currentData().toInt();
+
+    if (yIndex < 0 || 
+        xIndex >= static_cast<int>(experiment->get_variables_count()) ||
+        yIndex >= static_cast<int>(experiment->get_variables_count())) {
+        return;
+    }
+
+    // Строим график
+    draw_line_plot(xIndex, yIndex, plot_tab_index);
+}
+
 void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
 {
     if (m_plotTabs.empty()) {
@@ -1219,8 +1342,9 @@ void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
     graph->setAdaptiveSampling(false);
 
     // Применяем настройки из PlotSettingsWidget, если они есть
-    if (plot.settingsTable && plot.settingsTable->rowCount() > 0) {
-        applyPlotSettingsFromTable(graph, plot.settingsTable, 0);
+    // Используем настройки из строки, соответствующей переменной для оси X
+    if (plot.settingsTable && plot.settingsTable->rowCount() > first_in) {
+        applyPlotSettingsFromTable(graph, plot.settingsTable, first_in);
     } else {
         // Устанавливаем стиль линии по умолчанию
         graph->setLineStyle(QCPGraph::lsLine);
@@ -1230,9 +1354,31 @@ void MainWindow::draw_line_plot(int first_in, int second_in, int plot_tab_index)
     // Устанавливаем данные
     graph->setData(xQvector, yQvector);
 
-    // Настраиваем оси
-    plot.plot->xAxis->setLabel(QString::fromStdString(variable_first.get_name_tables()));
-    plot.plot->yAxis->setLabel(QString::fromStdString(variable_second.get_name_tables()));
+    // Настраиваем оси - используем названия из QLineEdit, если они заданы
+    PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plot.settingsTab);
+    if (plotSettings) {
+        QString xLabel = plotSettings->xAxisLabelEdit()->text();
+        QString yLabel = plotSettings->yAxisLabelEdit()->text();
+        
+        // Если названия не заданы, используем названия переменных по умолчанию
+        if (xLabel.isEmpty()) {
+            xLabel = QString::fromStdString(variable_first.get_name_tables());
+            xLabel.remove('\"');
+            plotSettings->xAxisLabelEdit()->setText(xLabel);
+        }
+        if (yLabel.isEmpty()) {
+            yLabel = QString::fromStdString(variable_second.get_name_tables());
+            yLabel.remove('\"');
+            plotSettings->yAxisLabelEdit()->setText(yLabel);
+        }
+        
+        plot.plot->xAxis->setLabel(xLabel);
+        plot.plot->yAxis->setLabel(yLabel);
+    } else {
+        // Fallback на старый способ, если plotSettings недоступен
+        plot.plot->xAxis->setLabel(QString::fromStdString(variable_first.get_name_tables()));
+        plot.plot->yAxis->setLabel(QString::fromStdString(variable_second.get_name_tables()));
+    }
 
     // Обновляем оси и перерисовываем
     plot.plot->rescaleAxes();

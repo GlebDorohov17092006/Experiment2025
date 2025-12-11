@@ -7,6 +7,7 @@ QT_BEGIN_NAMESPACE
 class QTableWidget;
 class QWidget;
 class QComboBox;
+class QLineEdit;
 namespace Ui {
 class PlotSettingsWidget;
 }
@@ -32,8 +33,9 @@ public:
 
     QTableWidget* settingsTable() const override;
     void setupDelegates(QWidget* parent) override;
-    QComboBox* xAxisComboBox() const;
     QComboBox* yAxisComboBox() const;
+    QLineEdit* xAxisLabelEdit() const;
+    QLineEdit* yAxisLabelEdit() const;
 
 private:
     Ui::PlotSettingsWidget *ui;

@@ -4,6 +4,7 @@
 #include "ColorDialogItemDelegate.h"
 #include <QTableWidget>
 #include <QComboBox>
+#include <QLineEdit>
 
 PlotSettingsWidget::PlotSettingsWidget(QWidget *parent)
     : BaseSettingsWidget(parent)
@@ -46,13 +47,18 @@ void PlotSettingsWidget::setupDelegates(QWidget* parent)
     ui->settingsTable->setItemDelegateForColumn(ColumnColor, colorDelegate);
 }
 
-QComboBox* PlotSettingsWidget::xAxisComboBox() const
-{
-    return ui->comboBox_xAxis;
-}
-
 QComboBox* PlotSettingsWidget::yAxisComboBox() const
 {
     return ui->comboBox_yAxis;
+}
+
+QLineEdit* PlotSettingsWidget::xAxisLabelEdit() const
+{
+    return ui->lineEdit_xAxisLabel;
+}
+
+QLineEdit* PlotSettingsWidget::yAxisLabelEdit() const
+{
+    return ui->lineEdit_yAxisLabel;
 }
 
