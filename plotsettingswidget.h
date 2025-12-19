@@ -33,7 +33,8 @@ public:
 
     QTableWidget* settingsTable() const override;
     void setupDelegates(QWidget* parent) override;
-    QComboBox* yAxisComboBox() const;
+    QComboBox* xAxisComboBox() const;
+    QComboBox* yAxisComboBox() const; // Оставляем для обратной совместимости, но не используем
     QLineEdit* xAxisLabelEdit() const;
     QLineEdit* yAxisLabelEdit() const;
 

@@ -21,12 +21,12 @@
         </font>
        </property>
        <property name="text">
-        <string>Название оси X:</string>
+        <string>Переменная X:</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QLineEdit" name="lineEdit_xAxisLabel">
+      <widget class="QComboBox" name="comboBox_xAxis">
        <property name="maximumSize">
         <size>
          <width>300</width>
@@ -36,7 +36,29 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QLabel" name="label_yAxis">
+      <widget class="QLabel" name="label_xAxisLabel">
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Название оси X:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="lineEdit_xAxisLabel">
+       <property name="maximumSize">
+        <size>
+         <width>300</width>
+         <height>16777215</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_yAxisLabel">
        <property name="font">
         <font>
          <bold>true</bold>
@@ -47,7 +69,7 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item row="2" column="1">
       <widget class="QLineEdit" name="lineEdit_yAxisLabel">
        <property name="maximumSize">
         <size>
@@ -62,7 +84,7 @@
    <item>
     <widget class="QTableWidget" name="settingsTable">
      <property name="columnCount">
-      <number>3</number>
+      <number>4</number>
      </property>
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
@@ -82,7 +104,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Интервал</string>
+       <string>Ширина столбца</string>
       </property>
       <property name="font">
        <font>
@@ -93,6 +115,16 @@
      <column>
       <property name="text">
        <string>Цвет</string>
+      </property>
+      <property name="font">
+       <font>
+        <bold>true</bold>
+       </font>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Прозрачность</string>
       </property>
       <property name="font">
        <font>

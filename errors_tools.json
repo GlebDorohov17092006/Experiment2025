@@ -4,18 +4,17 @@
       "error": 0.001,
       "type": "Absolute"
     },
-    "Voltmeter": {
-      "error": 0.05,
-      "type": "Relative"
-    },
-    "Линейка": {
+    "Штангенциркуль": {
       "error": 0.15,
       "type": "Absolute"
+    },
+    "Voltmeter": {
+      "error": 0.001,
+      "type": "Relative"
     }
   },
   "Variables": {
     "I": "Ammeter",
-    "R": "Линейка",
-    "U": "Voltmeter"
+    "R": "Штангенциркуль"
   }
 }

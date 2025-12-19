@@ -2,7 +2,10 @@
 #include "./ui_scattersettingswidget.h"
 #include "ComboItemDelegate.h"
 #include "ColorDialogItemDelegate.h"
+#include "DoubleSpinBoxDelegate.h"
 #include <QTableWidget>
+#include <QComboBox>
+#include <QLineEdit>
 
 ScatterSettingsWidget::ScatterSettingsWidget(QWidget *parent)
     : BaseSettingsWidget(parent)
@@ -23,6 +26,10 @@ QTableWidget* ScatterSettingsWidget::settingsTable() const
 
 void ScatterSettingsWidget::setupDelegates(QWidget* parent)
 {
+    // Столбец размера точки
+    DoubleSpinBoxDelegate* pointSizeDelegate = new DoubleSpinBoxDelegate(parent);
+    ui->settingsTable->setItemDelegateForColumn(ColumnPointSize, pointSizeDelegate);
+    
     // Столбец типа точки
     ComboItemDelegate* pointTypeDelegate = new ComboItemDelegate(parent);
     pointTypeDelegate->addItem("Круг", "circle");
@@ -35,5 +42,20 @@ void ScatterSettingsWidget::setupDelegates(QWidget* parent)
     // Столбец цвета
     ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(parent);
     ui->settingsTable->setItemDelegateForColumn(ColumnColor, colorDelegate);
+}
+
+QComboBox* ScatterSettingsWidget::xAxisComboBox() const
+{
+    return ui->comboBox_xAxis;
+}
+
+QLineEdit* ScatterSettingsWidget::xAxisLabelEdit() const
+{
+    return ui->lineEdit_xAxisLabel;
+}
+
+QLineEdit* ScatterSettingsWidget::yAxisLabelEdit() const
+{
+    return ui->lineEdit_yAxisLabel;
 }
 

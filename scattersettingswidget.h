@@ -6,6 +6,8 @@
 QT_BEGIN_NAMESPACE
 class QTableWidget;
 class QWidget;
+class QComboBox;
+class QLineEdit;
 namespace Ui {
 class ScatterSettingsWidget;
 }
@@ -29,6 +31,9 @@ public:
 
     QTableWidget* settingsTable() const override;
     void setupDelegates(QWidget* parent) override;
+    QComboBox* xAxisComboBox() const;
+    QLineEdit* xAxisLabelEdit() const;
+    QLineEdit* yAxisLabelEdit() const;
 
 private:
     Ui::ScatterSettingsWidget *ui;

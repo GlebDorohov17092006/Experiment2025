@@ -356,6 +356,7 @@
      <addaction name="add_graph"/>
      <addaction name="add_histogram"/>
      <addaction name="add_scatterplot"/>
+     <addaction name="add_heatmap"/>
     </widget>
     <addaction name="menu_2"/>
     <addaction name="delete_plot"/>
@@ -406,6 +407,11 @@
   <action name="add_scatterplot">
    <property name="text">
     <string>Скаттерплот</string>
+   </property>
+  </action>
+  <action name="add_heatmap">
+   <property name="text">
+    <string>Хитмапа</string>
    </property>
   </action>
  </widget>

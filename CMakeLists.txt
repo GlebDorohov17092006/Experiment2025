@@ -29,6 +29,19 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport)
 
 file( GLOB PROJECT_SOURCES *.cpp *.h *.ui)
 
+# Явно добавляем новые файлы для надежности
+list(APPEND PROJECT_SOURCES
+    OpacitySpinBoxDelegate.cpp
+    OpacitySpinBoxDelegate.h
+    LineEditDelegate.cpp
+    LineEditDelegate.h
+    InstrumentErrorDelegate.cpp
+    InstrumentErrorDelegate.h
+    heatmapsettingswidget.cpp
+    heatmapsettingswidget.h
+    heatmapsettingswidget.ui
+)
+
 
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

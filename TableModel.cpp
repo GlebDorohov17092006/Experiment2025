@@ -55,27 +55,27 @@ QVariant TableModel::data(const QModelIndex &index, int role) const
 
     auto& variable = experiment->get_variable(col);
 
-    if (role == Qt::DisplayRole || role == Qt::EditRole) {
+    if (role == Qt::EditRole) {
+        // Для редактирования всегда возвращаем только числовое значение
+        if (row < static_cast<int>(variable.get_measurements_count())) {
+            return variable.get_measurement(row);
+        } else {
+            return 0.0;
+        }
+    }
+    
+    if (role == Qt::DisplayRole) {
+        // Для отображения показываем значение с погрешностью
         if (row < static_cast<int>(variable.get_measurements_count())) {
             double value = variable.get_measurement(row);
-
-            if (role == Qt::DisplayRole) {
-                // ДОБАВЛЯЕМ ОТОБРАЖЕНИЕ ПОГРЕШНОСТИ
-                double error = variable.get_error_instrument(0, value);
-                if (error > 0) {
-                    return QString("%1 ± %2").arg(value, 0, 'f', 3).arg(error, 0, 'f', 3);
-                } else {
-                    return QString::number(value, 'f', 3);
-                }
+            double error = variable.get_error_instrument(0, value);
+            if (error > 0) {
+                return QString("%1 ± %2").arg(value, 0, 'f', 3).arg(error, 0, 'f', 3);
             } else {
-                return value;
+                return QString::number(value, 'f', 3);
             }
         } else {
-            if (role == Qt::DisplayRole) {
-                return "0.000";
-            } else {
-                return 0.0;
-            }
+            return "0.000";
         }
     }
 

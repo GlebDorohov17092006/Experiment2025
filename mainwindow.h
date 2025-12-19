@@ -12,12 +12,18 @@ class Experiment;
 class Instrument;
 class Variable;
 class ComboItemDelegate;
+class LineEditDelegate;
+class InstrumentErrorDelegate;
 class QCustomPlot;
 class QCPGraph;
+class QCPBars;
 class QTableWidget;
 class QFrame;
 class ReportBlock;
 class PlotSettingsWidget;
+class HistogramSettingsWidget;
+class ScatterSettingsWidget;
+class HeatmapSettingsWidget;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -57,6 +63,7 @@ private slots:
     void addPlotBlockToReport();
     void on_import_data_triggered();
     void on_export_data_triggered();
+    void onTableDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>());
 
 private:
     // Методы из ветки Gleb (основная логика)
@@ -74,9 +81,16 @@ private:
     void syncPlotSettingsTables();
     void applyPlotSettingsFromTable(QCPGraph* graph, QTableWidget* settingsTable, int rowIndex);
     void updateVariableComboBoxes(PlotSettingsWidget* plotSettings);
+    void updateHistogramComboBoxes(HistogramSettingsWidget* histogramSettings);
+    void updateScatterComboBoxes(ScatterSettingsWidget* scatterSettings);
     void rebuildPlotFromSettings(int tabIndex);
+    void rebuildHistogramFromSettings(int tabIndex);
+    void rebuildScatterFromSettings(int tabIndex);
     QCPGraph* findGraphForVariable(QCustomPlot* plot, int variableIndex);
+    QCPBars* findBarsForVariable(QCustomPlot* plot, int variableIndex);
     void draw_single_graph(int first_in, int second_in, int plot_tab_index, QCPGraph* graph);
+    void draw_single_histogram(int xIndex, int yIndex, int plot_tab_index, QCPBars* bars);
+    void draw_single_scatter(int xIndex, int yIndex, int plot_tab_index, QCPGraph* graph);
     QString getInstrumentDisplayText(int instrumentIndex);
     void addDynamicPlotTab(const QString& plotType);
 
@@ -114,6 +128,8 @@ private:
     // из ветки Gleb
     ComboItemDelegate* m_instrumentDelegate;
     ComboItemDelegate* m_errorTypeDelegate;
+    LineEditDelegate* m_instrumentNameDelegate;
+    InstrumentErrorDelegate* m_instrumentErrorDelegate;
     std::shared_ptr<Instrument> m_noInstrument;
 
     // Из ветки main

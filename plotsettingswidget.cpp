@@ -2,6 +2,7 @@
 #include "./ui_plotsettingswidget.h"
 #include "ComboItemDelegate.h"
 #include "ColorDialogItemDelegate.h"
+#include "DoubleSpinBoxDelegate.h"
 #include <QTableWidget>
 #include <QComboBox>
 #include <QLineEdit>
@@ -41,14 +42,27 @@ void PlotSettingsWidget::setupDelegates(QWidget* parent)
     pointTypeDelegate->addItem("Без точки", "none");
     ui->settingsTable->setItemDelegateForColumn(ColumnPointType, pointTypeDelegate);
     
+    // Столбец ширины линии
+    DoubleSpinBoxDelegate* widthDelegate = new DoubleSpinBoxDelegate(parent);
+    ui->settingsTable->setItemDelegateForColumn(ColumnWidth, widthDelegate);
+    
+    // Столбец размера точки
+    DoubleSpinBoxDelegate* pointSizeDelegate = new DoubleSpinBoxDelegate(parent);
+    ui->settingsTable->setItemDelegateForColumn(ColumnPointSize, pointSizeDelegate);
+    
     // Столбец цвета
     ColorDialogItemDelegate* colorDelegate = new ColorDialogItemDelegate(parent);
     ui->settingsTable->setItemDelegateForColumn(ColumnColor, colorDelegate);
 }
 
+QComboBox* PlotSettingsWidget::xAxisComboBox() const
+{
+    return ui->comboBox_xAxis;
+}
+
 QComboBox* PlotSettingsWidget::yAxisComboBox() const
 {
-    return ui->comboBox_yAxis;
+    return nullptr; // Больше не используется, оставлено для обратной совместимости
 }
 
 QLineEdit* PlotSettingsWidget::xAxisLabelEdit() const

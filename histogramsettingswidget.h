@@ -6,6 +6,8 @@
 QT_BEGIN_NAMESPACE
 class QTableWidget;
 class QWidget;
+class QComboBox;
+class QLineEdit;
 namespace Ui {
 class HistogramSettingsWidget;
 }
@@ -20,7 +22,8 @@ public:
         ColumnEnabled = 0,
         ColumnInterval = 1,
         ColumnColor = 2,
-        ColumnCount = 3
+        ColumnOpacity = 3,
+        ColumnCount = 4
     };
 
     explicit HistogramSettingsWidget(QWidget *parent = nullptr);
@@ -28,6 +31,9 @@ public:
 
     QTableWidget* settingsTable() const override;
     void setupDelegates(QWidget* parent) override;
+    QComboBox* xAxisComboBox() const;
+    QLineEdit* xAxisLabelEdit() const;
+    QLineEdit* yAxisLabelEdit() const;
 
 private:
     Ui::HistogramSettingsWidget *ui;

@@ -14,6 +14,14 @@ ColorDialogItemDelegate::ColorDialogItemDelegate(QObject *parent)
 void ColorDialogItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                                     const QModelIndex &index) const
 {
+    QStyleOptionViewItem opt = option;
+    initStyleOption(&opt, index);
+    
+    // Не рисуем содержимое ячейки во время редактирования
+    if (opt.state & QStyle::State_Editing) {
+        return;
+    }
+    
     QColor color = getColorFromIndex(index);
     
     QRect rect = option.rect;

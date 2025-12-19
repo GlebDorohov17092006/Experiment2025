@@ -8,6 +8,9 @@
 #include "RelativeInstrument.h"
 #include "CombinedInstrument.h"
 #include "ComboItemDelegate.h"
+#include "LineEditDelegate.h"
+#include "InstrumentErrorDelegate.h"
+#include "DoubleSpinBoxDelegate.h"
 #include "parser.h"
 #include "json.hpp"
 #include "qcustomplot.h"
@@ -16,6 +19,9 @@
 #include "TableReportBlock.h"
 #include "PlotReportBlock.h"
 #include "plotsettingswidget.h"
+#include "histogramsettingswidget.h"
+#include "scattersettingswidget.h"
+#include "heatmapsettingswidget.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -60,6 +66,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_instrumentsModel(new InstrumentsModel(this))
     , m_instrumentDelegate(new ComboItemDelegate(this))
     , m_errorTypeDelegate(new ComboItemDelegate(this))
+    , m_instrumentNameDelegate(new LineEditDelegate(this))
+    , m_instrumentErrorDelegate(new InstrumentErrorDelegate(this))
     , m_noInstrument(std::make_shared<AbsoluteInstrument>("(нет инструмента)", 0.0))
 {
     ui->setupUi(this);
@@ -73,6 +81,10 @@ MainWindow::MainWindow(QWidget *parent)
     // Настраиваем таблицу измерений
     ui->tableViewMeasurements->setModel(m_tableModel);
     ui->tableViewMeasurements->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    
+    // Устанавливаем делегат для редактирования числовых значений
+    DoubleSpinBoxDelegate* doubleDelegate = new DoubleSpinBoxDelegate(this);
+    ui->tableViewMeasurements->setItemDelegate(doubleDelegate);
 
     // Настраиваем таблицу инструментов
     ui->tableViewInstruments->setModel(m_instrumentsModel);
@@ -86,7 +98,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Применяем делегаты
     ui->variableInstrumentsTable->setItemDelegateForRow(0, m_instrumentDelegate);
-    ui->tableViewInstruments->setItemDelegateForColumn(1, m_errorTypeDelegate);
+    ui->tableViewInstruments->setItemDelegateForColumn(0, m_instrumentNameDelegate); // Название инструмента
+    ui->tableViewInstruments->setItemDelegateForColumn(1, m_errorTypeDelegate); // Тип ошибки
+    ui->tableViewInstruments->setItemDelegateForColumn(2, m_instrumentErrorDelegate); // Погрешность
 
     // Подключаем сигналы из ветки Gleb
     // addColumnButton, removeColumnButton, addRowButton, removeRowButton подключены через UI файл, не дублируем здесь
@@ -100,6 +114,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->add_graph, &QAction::triggered, this, [this]() { addDynamicPlotTab("График"); });
     connect(ui->add_histogram, &QAction::triggered, this, [this]() { addDynamicPlotTab("Гистограмма"); });
     connect(ui->add_scatterplot, &QAction::triggered, this, [this]() { addDynamicPlotTab("Скаттерплот"); });
+    connect(ui->add_heatmap, &QAction::triggered, this, [this]() { addDynamicPlotTab("Хитмапа"); });
     connect(ui->delete_plot, &QAction::triggered, this, [this]() { removeGraph(); });
 
     // Подключаем обработчик для перетаскивания вкладок графиков
@@ -117,6 +132,7 @@ MainWindow::MainWindow(QWidget *parent)
     addDynamicPlotTab("График");
     addDynamicPlotTab("Гистограмма");
     addDynamicPlotTab("Скаттерплот");
+    addDynamicPlotTab("Хитмапа"); // Хитмапа по умолчанию
 
     // Подключаем обработчики двойного клика по заголовкам
     connect(ui->tableViewMeasurements->horizontalHeader(), &QHeaderView::sectionDoubleClicked,
@@ -129,6 +145,9 @@ MainWindow::MainWindow(QWidget *parent)
     // Подключаем синхронизацию вкладок графиков и настроек
     connect(ui->tabPlot, &QTabWidget::currentChanged, this, &MainWindow::onPlotTabChanged);
     connect(ui->tabPlotSettings, &QTabWidget::currentChanged, this, &MainWindow::onPlotSettingsTabChanged);
+    
+    // Подключаем обновление графиков при изменении данных в таблице
+    connect(m_tableModel, &QAbstractItemModel::dataChanged, this, &MainWindow::onTableDataChanged);
 }
 
 MainWindow::~MainWindow()
@@ -138,7 +157,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupNoInstrument()
 {
-    m_instruments.insert(m_instruments.begin(), m_noInstrument);
+    // Базовый инструмент не добавляется в таблицу инструментов,
+    // но доступен для выбора в таблице переменных через делегат
 }
 
 void MainWindow::updateInstrumentDelegate()
@@ -148,9 +168,11 @@ void MainWindow::updateInstrumentDelegate()
     }
     m_instrumentDelegate = new ComboItemDelegate(this);
 
+    // Базовый инструмент всегда доступен в делегате
     m_instrumentDelegate->addItem("(нет инструмента)", "(нет инструмента)");
 
-    for (size_t i = 1; i < m_instruments.size(); ++i) {
+    // Добавляем все инструменты из таблицы
+    for (size_t i = 0; i < m_instruments.size(); ++i) {
         const auto& instrument = m_instruments[i];
         QString name = QString::fromStdString(instrument->get_name());
         m_instrumentDelegate->addItem(name, name);
@@ -269,20 +291,48 @@ void MainWindow::addColumn()
     updateVariableInstrumentsTable();
     syncPlotSettingsTables();
     
-    // Добавляем новую переменную в combobox для оси Y во всех графиках
+    // Добавляем новую переменную в combobox для оси X во всех графиках и гистограммах
     for (PlotTab& plotTab : m_plotTabs) {
         if (plotTab.type == "График") {
             PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
             if (plotSettings) {
-                QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-                if (yAxisCombo) {
+                QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+                if (xAxisCombo) {
                     QString varName = name;
                     varName.remove('\"');
                     if (varName.isEmpty()) {
                         varName = QString("Переменная %1").arg(experiment->get_variables_count());
                     }
                     int varIndex = static_cast<int>(experiment->get_variables_count() - 1);
-                    yAxisCombo->addItem(varName, varIndex);
+                    xAxisCombo->addItem(varName, varIndex);
+                }
+            }
+        } else if (plotTab.type == "Гистограмма") {
+            HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(plotTab.settingsTab);
+            if (histogramSettings) {
+                QComboBox* xAxisCombo = histogramSettings->xAxisComboBox();
+                if (xAxisCombo) {
+                    QString varName = name;
+                    varName.remove('\"');
+                    if (varName.isEmpty()) {
+                        varName = QString("Переменная %1").arg(experiment->get_variables_count());
+                    }
+                    int varIndex = static_cast<int>(experiment->get_variables_count() - 1);
+                    xAxisCombo->addItem(varName, varIndex);
+                }
+            }
+        } else if (plotTab.type == "Скаттерплот") {
+            ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(plotTab.settingsTab);
+            if (scatterSettings) {
+                QComboBox* xAxisCombo = scatterSettings->xAxisComboBox();
+                if (xAxisCombo) {
+                    QString varName = name;
+                    varName.remove('\"');
+                    if (varName.isEmpty()) {
+                        varName = QString("Переменная %1").arg(experiment->get_variables_count());
+                    }
+                    int varIndex = static_cast<int>(experiment->get_variables_count() - 1);
+                    xAxisCombo->addItem(varName, varIndex);
                 }
             }
         }
@@ -353,8 +403,8 @@ void MainWindow::addInstrument()
 
 void MainWindow::removeInstrument()
 {
-    if (m_instruments.size() <= 1) {
-        QMessageBox::information(this, "Информация", "Нельзя удалить базовый инструмент 'Нет инструмента'");
+    if (m_instruments.empty()) {
+        QMessageBox::information(this, "Информация", "Нет инструментов для удаления");
         return;
     }
 
@@ -538,6 +588,36 @@ void MainWindow::syncPlotSettingsTables()
                     // Цвет по умолчанию (синий)
                     QColor defaultColor = QColor::fromHsv((i * 60) % 360, 255, 255);
                     plotTab.settingsTable->setItem(i, 5, new QTableWidgetItem(defaultColor.name()));
+                } else if (plotTab.type == "Гистограмма") {
+                    // Галочка для выбора переменной по оси OY
+                    QTableWidgetItem* checkItem = new QTableWidgetItem();
+                    checkItem->setCheckState(Qt::Unchecked); // Гистограммы не отображаются по умолчанию
+                    plotTab.settingsTable->setItem(i, HistogramSettingsWidget::ColumnEnabled, checkItem);
+
+                    // Ширина столбца по умолчанию (автоматический расчет)
+                    plotTab.settingsTable->setItem(i, HistogramSettingsWidget::ColumnInterval, new QTableWidgetItem("Автоматически"));
+
+                    // Цвет по умолчанию
+                    QColor defaultColor = QColor::fromHsv((i * 60) % 360, 255, 255);
+                    plotTab.settingsTable->setItem(i, HistogramSettingsWidget::ColumnColor, new QTableWidgetItem(defaultColor.name()));
+                    
+                    // Прозрачность по умолчанию (100% = непрозрачно)
+                    plotTab.settingsTable->setItem(i, HistogramSettingsWidget::ColumnOpacity, new QTableWidgetItem("100 %"));
+                } else if (plotTab.type == "Скаттерплот") {
+                    // Галочка для выбора переменной по оси OY
+                    QTableWidgetItem* checkItem = new QTableWidgetItem();
+                    checkItem->setCheckState(Qt::Unchecked); // Scatter plots не отображаются по умолчанию
+                    plotTab.settingsTable->setItem(i, ScatterSettingsWidget::ColumnEnabled, checkItem);
+                    
+                    // Размер точки по умолчанию
+                    plotTab.settingsTable->setItem(i, ScatterSettingsWidget::ColumnPointSize, new QTableWidgetItem("6"));
+                    
+                    // Тип точки по умолчанию
+                    plotTab.settingsTable->setItem(i, ScatterSettingsWidget::ColumnPointType, new QTableWidgetItem("Круг"));
+                    
+                    // Цвет по умолчанию
+                    QColor defaultColor = QColor::fromHsv((i * 60) % 360, 255, 255);
+                    plotTab.settingsTable->setItem(i, ScatterSettingsWidget::ColumnColor, new QTableWidgetItem(defaultColor.name()));
                 }
             }
         }
@@ -640,6 +720,15 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
 
     // Настраиваем специфичные настройки для графиков
     PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(settingsWidget);
+    HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(settingsWidget);
+    ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(settingsWidget);
+    HeatmapSettingsWidget* heatmapSettings = qobject_cast<HeatmapSettingsWidget*>(settingsWidget);
+    
+    // Хитмапа пока не имеет настроек, просто создаем пустую вкладку
+    if (heatmapSettings) {
+        // Пока ничего не делаем, хитмапа будет пустой
+    }
+    
     if (plotSettings) {
             // Синхронизируем таблицу с переменными (создает строки для всех переменных)
             // Вызываем после добавления plotTab в m_plotTabs, чтобы syncPlotSettingsTables мог найти новый график
@@ -715,9 +804,9 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
                 }
             });
 
-            // Обработчик изменения выбора переменной Y в ComboBox
-            QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-            connect(yAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
+            // Обработчик изменения выбора переменной X в ComboBox
+            QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+            connect(xAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex, plotSettings]() {
                 if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
                     rebuildPlotFromSettings(tabIndex);
                 }
@@ -741,6 +830,196 @@ void MainWindow::addDynamicPlotTab(const QString& plotType)
                     PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
                     if (plotSettings && plotTab.plot) {
                         plotTab.plot->yAxis->setLabel(plotSettings->yAxisLabelEdit()->text());
+                        plotTab.plot->replot();
+                    }
+                }
+            });
+        }
+    }
+    
+    // Настраиваем специфичные настройки для гистограмм
+    if (histogramSettings) {
+        // Синхронизируем таблицу с переменными
+        syncPlotSettingsTables();
+        
+        // Настраиваем ширину колонок для гистограмм
+        QTableWidget* settingsTable = histogramSettings->settingsTable();
+        if (settingsTable) {
+            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnEnabled, 80); // Отрисовка
+            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnInterval, 150); // Ширина столбца (расширена)
+            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnColor, 100); // Цвет
+            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnOpacity, 100); // Прозрачность (сужена)
+        }
+        
+        // Заполняем ComboBox переменными из Experiment
+        updateHistogramComboBoxes(histogramSettings);
+        
+        // Устанавливаем настройки по умолчанию
+        Experiment* experiment = Experiment::get_instance();
+        if (experiment && experiment->get_variables_count() > 0) {
+            // Убеждаемся, что все галочки сняты и созданы, если их нет
+            if (settingsTable) {
+                for (int i = 0; i < settingsTable->rowCount(); ++i) {
+                    QTableWidgetItem* item = settingsTable->item(i, HistogramSettingsWidget::ColumnEnabled);
+                    if (!item) {
+                        // Создаем галочку, если её нет
+                        item = new QTableWidgetItem();
+                        item->setCheckState(Qt::Unchecked);
+                        settingsTable->setItem(i, HistogramSettingsWidget::ColumnEnabled, item);
+                    } else {
+                        item->setCheckState(Qt::Unchecked);
+                    }
+                    
+                    // Устанавливаем значения по умолчанию, если их нет
+                    if (!settingsTable->item(i, HistogramSettingsWidget::ColumnInterval)) {
+                        settingsTable->setItem(i, HistogramSettingsWidget::ColumnInterval, new QTableWidgetItem("Автоматически"));
+                    }
+                    if (!settingsTable->item(i, HistogramSettingsWidget::ColumnOpacity)) {
+                        settingsTable->setItem(i, HistogramSettingsWidget::ColumnOpacity, new QTableWidgetItem("100 %"));
+                    }
+                }
+            }
+            
+            // Устанавливаем названия осей по умолчанию
+            if (experiment->get_variables_count() >= 1) {
+                QString xVarName = QString::fromStdString(experiment->get_variable(0).get_name_tables());
+                xVarName.remove('\"');
+                histogramSettings->xAxisLabelEdit()->setText(xVarName);
+                histogramSettings->yAxisLabelEdit()->setText("Частота");
+            }
+        }
+    }
+    
+    // Подключаем обработчик изменений в таблице настроек для гистограмм
+    if (plotType == "Гистограмма") {
+        HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(settingsWidget);
+        if (histogramSettings) {
+            // Используем индекс последнего добавленного элемента
+            int tabIndex = m_plotTabs.size() - 1;
+            
+            // Обработчик изменений в таблице настроек
+            connect(settingsTable, &QTableWidget::cellChanged, this, [this, tabIndex](int row, int column) {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    rebuildHistogramFromSettings(tabIndex);
+                }
+            });
+            
+            // Обработчик изменения выбора переменной X в ComboBox
+            QComboBox* xAxisCombo = histogramSettings->xAxisComboBox();
+            connect(xAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    rebuildHistogramFromSettings(tabIndex);
+                }
+            });
+            
+            // Обработчик изменения названий осей
+            connect(histogramSettings->xAxisLabelEdit(), &QLineEdit::textChanged, this, [this, tabIndex]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(plotTab.settingsTab);
+                    if (histogramSettings && plotTab.plot) {
+                        plotTab.plot->xAxis->setLabel(histogramSettings->xAxisLabelEdit()->text());
+                        plotTab.plot->replot();
+                    }
+                }
+            });
+            
+            connect(histogramSettings->yAxisLabelEdit(), &QLineEdit::textChanged, this, [this, tabIndex]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(plotTab.settingsTab);
+                    if (histogramSettings && plotTab.plot) {
+                        plotTab.plot->yAxis->setLabel(histogramSettings->yAxisLabelEdit()->text());
+                        plotTab.plot->replot();
+                    }
+                }
+            });
+        }
+    }
+    
+    // Настраиваем специфичные настройки для scatter plot
+    if (scatterSettings) {
+        // Синхронизируем таблицу с переменными
+        syncPlotSettingsTables();
+        
+        // Заполняем ComboBox переменными из Experiment
+        updateScatterComboBoxes(scatterSettings);
+        
+        // Устанавливаем настройки по умолчанию
+        Experiment* experiment = Experiment::get_instance();
+        if (experiment && experiment->get_variables_count() > 0) {
+            // Убеждаемся, что все галочки сняты и созданы, если их нет
+            QTableWidget* settingsTable = scatterSettings->settingsTable();
+            if (settingsTable) {
+                for (int i = 0; i < settingsTable->rowCount(); ++i) {
+                    QTableWidgetItem* item = settingsTable->item(i, ScatterSettingsWidget::ColumnEnabled);
+                    if (!item) {
+                        // Создаем галочку, если её нет
+                        item = new QTableWidgetItem();
+                        item->setCheckState(Qt::Unchecked);
+                        settingsTable->setItem(i, ScatterSettingsWidget::ColumnEnabled, item);
+                    } else {
+                        item->setCheckState(Qt::Unchecked);
+                    }
+                }
+            }
+            
+            // Устанавливаем названия осей по умолчанию
+            if (experiment->get_variables_count() >= 1) {
+                QString xVarName = QString::fromStdString(experiment->get_variable(0).get_name_tables());
+                xVarName.remove('\"');
+                scatterSettings->xAxisLabelEdit()->setText(xVarName);
+                if (experiment->get_variables_count() >= 2) {
+                    QString yVarName = QString::fromStdString(experiment->get_variable(1).get_name_tables());
+                    yVarName.remove('\"');
+                    scatterSettings->yAxisLabelEdit()->setText(yVarName);
+                } else {
+                    scatterSettings->yAxisLabelEdit()->setText(xVarName);
+                }
+            }
+        }
+    }
+    
+    // Подключаем обработчик изменений в таблице настроек для scatter plot
+    if (plotType == "Скаттерплот") {
+        ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(settingsWidget);
+        if (scatterSettings) {
+            // Используем индекс последнего добавленного элемента
+            int tabIndex = m_plotTabs.size() - 1;
+            
+            // Обработчик изменений в таблице настроек
+            connect(settingsTable, &QTableWidget::cellChanged, this, [this, tabIndex](int row, int column) {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    rebuildScatterFromSettings(tabIndex);
+                }
+            });
+            
+            // Обработчик изменения выбора переменной X в ComboBox
+            QComboBox* xAxisCombo = scatterSettings->xAxisComboBox();
+            connect(xAxisCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, tabIndex]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    rebuildScatterFromSettings(tabIndex);
+                }
+            });
+            
+            // Обработчик изменения названий осей
+            connect(scatterSettings->xAxisLabelEdit(), &QLineEdit::textChanged, this, [this, tabIndex]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(plotTab.settingsTab);
+                    if (scatterSettings && plotTab.plot) {
+                        plotTab.plot->xAxis->setLabel(scatterSettings->xAxisLabelEdit()->text());
+                        plotTab.plot->replot();
+                    }
+                }
+            });
+            
+            connect(scatterSettings->yAxisLabelEdit(), &QLineEdit::textChanged, this, [this, tabIndex]() {
+                if (tabIndex >= 0 && tabIndex < m_plotTabs.size()) {
+                    PlotTab& plotTab = m_plotTabs[tabIndex];
+                    ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(plotTab.settingsTab);
+                    if (scatterSettings && plotTab.plot) {
+                        plotTab.plot->yAxis->setLabel(scatterSettings->yAxisLabelEdit()->text());
                         plotTab.plot->replot();
                     }
                 }
@@ -827,13 +1106,20 @@ void MainWindow::on_import_data_triggered()
             QApplication::setOverrideCursor(Qt::WaitCursor);
             QApplication::processEvents();
 
+            // Очищаем вектор инструментов (будет заполнен парсером)
+            m_instruments.clear();
+
             std::vector<Variable> variables;
             try {
-                variables = parser(csvFile.toStdString(), jsonFile.toStdString());
+                variables = parser(csvFile.toStdString(), jsonFile.toStdString(), &m_instruments, m_noInstrument);
             } catch (const std::exception& e) {
                 QApplication::restoreOverrideCursor();
                 QMessageBox::critical(this, "Ошибка парсинга",
                     QString("Произошла ошибка при парсинге файлов:\n%1").arg(e.what()));
+                // При ошибке просто очищаем список инструментов
+                m_instruments.clear();
+                m_instrumentsModel->refreshData();
+                updateInstrumentDelegate();
                 return;
             }
 
@@ -842,6 +1128,10 @@ void MainWindow::on_import_data_triggered()
                 QApplication::restoreOverrideCursor();
                 QMessageBox::warning(this, "Предупреждение",
                     "Не удалось загрузить данные из файлов.\nВозможно, файлы пусты или имеют неправильный формат.");
+                // При пустых данных очищаем список инструментов
+                m_instruments.clear();
+                m_instrumentsModel->refreshData();
+                updateInstrumentDelegate();
                 return;
             }
 
@@ -857,10 +1147,14 @@ void MainWindow::on_import_data_triggered()
             // Обновляем модель таблицы
             m_tableModel->refreshData();
 
+            // Обновляем модель таблицы инструментов
+            m_instrumentsModel->refreshData();
+            updateInstrumentDelegate();
+
             // Обновляем таблицу инструментов переменных
             updateVariableInstrumentsTable();
 
-            // Обновляем ComboBox во всех графиках
+            // Обновляем ComboBox во всех графиках и гистограммах
             for (PlotTab& plotTab : m_plotTabs) {
                 if (plotTab.type == "График") {
                     PlotSettingsWidget* plotSettings = qobject_cast<PlotSettingsWidget*>(plotTab.settingsTab);
@@ -874,7 +1168,7 @@ void MainWindow::on_import_data_triggered()
 
                             // Убеждаемся, что все галочки сняты (графики не отображаются по умолчанию)
                             QTableWidget* settingsTable = plotSettings->settingsTable();
-                            if (settingsTable && settingsTable->rowCount() > xIndex) {
+                            if (settingsTable) {
                                 for (int i = 0; i < settingsTable->rowCount(); ++i) {
                                     QTableWidgetItem* item = settingsTable->item(i, PlotSettingsWidget::ColumnEnabled);
                                     if (item) {
@@ -883,10 +1177,10 @@ void MainWindow::on_import_data_triggered()
                                 }
                             }
 
-                            // Устанавливаем переменную Y в ComboBox
-                            QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-                            if (yAxisCombo && yAxisCombo->count() > yIndex) {
-                                yAxisCombo->setCurrentIndex(yIndex);
+                            // Устанавливаем переменную X в ComboBox
+                            QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+                            if (xAxisCombo && xAxisCombo->count() > xIndex) {
+                                xAxisCombo->setCurrentIndex(xIndex);
                             }
 
                             // Устанавливаем названия осей по умолчанию
@@ -898,6 +1192,97 @@ void MainWindow::on_import_data_triggered()
                             plotSettings->yAxisLabelEdit()->setText(yVarName);
 
                             // Очищаем график, так как галочки не установлены
+                            if (plotTab.plot) {
+                                plotTab.plot->clearGraphs();
+                                plotTab.plot->replot();
+                            }
+                        }
+                    }
+                } else if (plotTab.type == "Гистограмма") {
+                    HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(plotTab.settingsTab);
+                    if (histogramSettings) {
+                        updateHistogramComboBoxes(histogramSettings);
+                        
+                        // Настраиваем ширину колонок для гистограмм
+                        QTableWidget* settingsTable = histogramSettings->settingsTable();
+                        if (settingsTable) {
+                            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnEnabled, 80); // Отрисовка
+                            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnInterval, 150); // Ширина столбца (расширена)
+                            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnColor, 100); // Цвет
+                            settingsTable->setColumnWidth(HistogramSettingsWidget::ColumnOpacity, 100); // Прозрачность (сужена)
+                        }
+                        
+                        // Устанавливаем названия осей по умолчанию
+                        if (experiment->get_variables_count() >= 1) {
+                            QString xVarName = QString::fromStdString(experiment->get_variable(0).get_name_tables());
+                            xVarName.remove('\"');
+                            histogramSettings->xAxisLabelEdit()->setText(xVarName);
+                            histogramSettings->yAxisLabelEdit()->setText("Частота");
+                            
+                            // Убеждаемся, что все галочки сняты и созданы, если их нет
+                            if (settingsTable) {
+                                for (int i = 0; i < settingsTable->rowCount(); ++i) {
+                                    QTableWidgetItem* item = settingsTable->item(i, HistogramSettingsWidget::ColumnEnabled);
+                                    if (!item) {
+                                        // Создаем галочку, если её нет
+                                        item = new QTableWidgetItem();
+                                        item->setCheckState(Qt::Unchecked);
+                                        settingsTable->setItem(i, HistogramSettingsWidget::ColumnEnabled, item);
+                                    } else {
+                                        item->setCheckState(Qt::Unchecked);
+                                    }
+                                    
+                                    // Устанавливаем значения по умолчанию, если их нет
+                                    if (!settingsTable->item(i, HistogramSettingsWidget::ColumnInterval)) {
+                                        settingsTable->setItem(i, HistogramSettingsWidget::ColumnInterval, new QTableWidgetItem("Автоматически"));
+                                    }
+                                    if (!settingsTable->item(i, HistogramSettingsWidget::ColumnOpacity)) {
+                                        settingsTable->setItem(i, HistogramSettingsWidget::ColumnOpacity, new QTableWidgetItem("100 %"));
+                                    }
+                                }
+                            }
+                            
+                            // Очищаем гистограммы, так как галочки не установлены
+                            if (plotTab.plot) {
+                                plotTab.plot->clearPlottables();
+                                plotTab.plot->replot();
+                            }
+                        }
+                    }
+                } else if (plotTab.type == "Скаттерплот") {
+                    ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(plotTab.settingsTab);
+                    if (scatterSettings) {
+                        updateScatterComboBoxes(scatterSettings);
+                        
+                        // Устанавливаем названия осей по умолчанию
+                        if (experiment->get_variables_count() >= 1) {
+                            QString xVarName = QString::fromStdString(experiment->get_variable(0).get_name_tables());
+                            xVarName.remove('\"');
+                            scatterSettings->xAxisLabelEdit()->setText(xVarName);
+                            if (experiment->get_variables_count() >= 2) {
+                                QString yVarName = QString::fromStdString(experiment->get_variable(1).get_name_tables());
+                                yVarName.remove('\"');
+                                scatterSettings->yAxisLabelEdit()->setText(yVarName);
+                            } else {
+                                scatterSettings->yAxisLabelEdit()->setText(xVarName);
+                            }
+                            
+                            // Убеждаемся, что все галочки сняты и созданы, если их нет
+                            QTableWidget* settingsTable = scatterSettings->settingsTable();
+                            if (settingsTable) {
+                                for (int i = 0; i < settingsTable->rowCount(); ++i) {
+                                    QTableWidgetItem* item = settingsTable->item(i, ScatterSettingsWidget::ColumnEnabled);
+                                    if (!item) {
+                                        item = new QTableWidgetItem();
+                                        item->setCheckState(Qt::Unchecked);
+                                        settingsTable->setItem(i, ScatterSettingsWidget::ColumnEnabled, item);
+                                    } else {
+                                        item->setCheckState(Qt::Unchecked);
+                                    }
+                                }
+                            }
+                            
+                            // Очищаем scatter plots, так как галочки не установлены
                             if (plotTab.plot) {
                                 plotTab.plot->clearGraphs();
                                 plotTab.plot->replot();
@@ -1063,9 +1448,9 @@ void MainWindow::saveReport()
     QMessageBox::information(this, "", QString("Отчет успешно сохранен в файл:\n%1").arg(fileName));
 }
 
-void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
+void MainWindow::updateHistogramComboBoxes(HistogramSettingsWidget* histogramSettings)
 {
-    if (!plotSettings) {
+    if (!histogramSettings) {
         return;
     }
 
@@ -1074,19 +1459,19 @@ void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
         return;
     }
 
-    QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
+    QComboBox* xAxisCombo = histogramSettings->xAxisComboBox();
 
-    if (!yAxisCombo) {
+    if (!xAxisCombo) {
         return;
     }
 
     // Сохраняем текущий выбранный индекс (если ComboBox уже заполнен)
-    int currentYIndex = -1;
-    if (yAxisCombo->count() > 0) {
-        currentYIndex = yAxisCombo->currentData().toInt();
+    int currentXIndex = -1;
+    if (xAxisCombo->count() > 0) {
+        currentXIndex = xAxisCombo->currentData().toInt();
     }
 
-    yAxisCombo->clear();
+    xAxisCombo->clear();
 
     if (experiment->get_variables_count() == 0) {
         return;
@@ -1100,20 +1485,128 @@ void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
         if (varName.isEmpty()) {
             varName = QString("Переменная %1").arg(i + 1);
         }
-        yAxisCombo->addItem(varName, static_cast<int>(i));
+        xAxisCombo->addItem(varName, static_cast<int>(i));
     }
 
     // Устанавливаем значение по умолчанию, если оно не было сохранено
-    if (currentYIndex < 0 || currentYIndex >= static_cast<int>(experiment->get_variables_count())) {
-        currentYIndex = (experiment->get_variables_count() > 1) ? 1 : 0; // Вторая переменная по умолчанию, или первая если только одна
+    if (currentXIndex < 0 || currentXIndex >= static_cast<int>(experiment->get_variables_count())) {
+        currentXIndex = 0; // Первая переменная по умолчанию для оси X
     }
 
     // Устанавливаем выбранный индекс
-    int yComboIndex = yAxisCombo->findData(currentYIndex);
-    if (yComboIndex >= 0) {
-        yAxisCombo->setCurrentIndex(yComboIndex);
-    } else if (yAxisCombo->count() > 0) {
-        yAxisCombo->setCurrentIndex((yAxisCombo->count() > 1) ? 1 : 0);
+    int xComboIndex = xAxisCombo->findData(currentXIndex);
+    if (xComboIndex >= 0) {
+        xAxisCombo->setCurrentIndex(xComboIndex);
+    } else if (xAxisCombo->count() > 0) {
+        xAxisCombo->setCurrentIndex(0);
+    }
+}
+
+void MainWindow::updateScatterComboBoxes(ScatterSettingsWidget* scatterSettings)
+{
+    if (!scatterSettings) {
+        return;
+    }
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+
+    QComboBox* xAxisCombo = scatterSettings->xAxisComboBox();
+
+    if (!xAxisCombo) {
+        return;
+    }
+
+    // Сохраняем текущий выбранный индекс (если ComboBox уже заполнен)
+    int currentXIndex = -1;
+    if (xAxisCombo->count() > 0) {
+        currentXIndex = xAxisCombo->currentData().toInt();
+    }
+
+    xAxisCombo->clear();
+
+    if (experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
+        auto variable = experiment->get_variable(i);
+        QString varName = QString::fromStdString(variable.get_name_tables());
+        // Убираем лишние кавычки из названий переменных для отображения в ComboBox
+        varName.remove('\"');
+        if (varName.isEmpty()) {
+            varName = QString("Переменная %1").arg(i + 1);
+        }
+        xAxisCombo->addItem(varName, static_cast<int>(i));
+    }
+
+    // Устанавливаем значение по умолчанию, если оно не было сохранено
+    if (currentXIndex < 0 || currentXIndex >= static_cast<int>(experiment->get_variables_count())) {
+        currentXIndex = 0; // Первая переменная по умолчанию для оси X
+    }
+
+    // Устанавливаем выбранный индекс
+    int xComboIndex = xAxisCombo->findData(currentXIndex);
+    if (xComboIndex >= 0) {
+        xAxisCombo->setCurrentIndex(xComboIndex);
+    } else if (xAxisCombo->count() > 0) {
+        xAxisCombo->setCurrentIndex(0);
+    }
+}
+
+void MainWindow::updateVariableComboBoxes(PlotSettingsWidget* plotSettings)
+{
+    if (!plotSettings) {
+        return;
+    }
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+
+    QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+
+    if (!xAxisCombo) {
+        return;
+    }
+
+    // Сохраняем текущий выбранный индекс (если ComboBox уже заполнен)
+    int currentXIndex = -1;
+    if (xAxisCombo->count() > 0) {
+        currentXIndex = xAxisCombo->currentData().toInt();
+    }
+
+    xAxisCombo->clear();
+
+    if (experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    for (size_t i = 0; i < experiment->get_variables_count(); ++i) {
+        auto variable = experiment->get_variable(i);
+        QString varName = QString::fromStdString(variable.get_name_tables());
+        // Убираем лишние кавычки из названий переменных для отображения в ComboBox
+        varName.remove('\"');
+        if (varName.isEmpty()) {
+            varName = QString("Переменная %1").arg(i + 1);
+        }
+        xAxisCombo->addItem(varName, static_cast<int>(i));
+    }
+
+    // Устанавливаем значение по умолчанию, если оно не было сохранено
+    if (currentXIndex < 0 || currentXIndex >= static_cast<int>(experiment->get_variables_count())) {
+        currentXIndex = 0; // Первая переменная по умолчанию для оси X
+    }
+
+    // Устанавливаем выбранный индекс
+    int xComboIndex = xAxisCombo->findData(currentXIndex);
+    if (xComboIndex >= 0) {
+        xAxisCombo->setCurrentIndex(xComboIndex);
+    } else if (xAxisCombo->count() > 0) {
+        xAxisCombo->setCurrentIndex(0);
     }
 }
 
@@ -1246,26 +1739,26 @@ void MainWindow::rebuildPlotFromSettings(int plot_tab_index)
         return;
     }
 
-    // Получаем переменную для оси Y из ComboBox
-    QComboBox* yAxisCombo = plotSettings->yAxisComboBox();
-    if (!yAxisCombo || yAxisCombo->count() == 0) {
+    // Получаем переменную для оси X из ComboBox
+    QComboBox* xAxisCombo = plotSettings->xAxisComboBox();
+    if (!xAxisCombo || xAxisCombo->count() == 0) {
         return;
     }
-    int yIndex = yAxisCombo->currentData().toInt();
+    int xIndex = xAxisCombo->currentData().toInt();
 
-    if (yIndex < 0 || yIndex >= static_cast<int>(experiment->get_variables_count())) {
+    if (xIndex < 0 || xIndex >= static_cast<int>(experiment->get_variables_count())) {
         return;
     }
 
     QTableWidget* settingsTable = plotSettings->settingsTable();
     
-    // Собираем список переменных X с установленными галочками
-    QList<int> enabledXIndices;
+    // Собираем список переменных Y с установленными галочками
+    QList<int> enabledYIndices;
     for (int i = 0; i < settingsTable->rowCount(); ++i) {
         QTableWidgetItem* enabledItem = settingsTable->item(i, PlotSettingsWidget::ColumnEnabled);
         if (enabledItem && enabledItem->checkState() == Qt::Checked) {
             if (i < static_cast<int>(experiment->get_variables_count())) {
-                enabledXIndices.append(i);
+                enabledYIndices.append(i);
             }
         }
     }
@@ -1277,7 +1770,7 @@ void MainWindow::rebuildPlotFromSettings(int plot_tab_index)
         QString graphName = graph->name();
         bool ok;
         int graphVarIndex = graphName.toInt(&ok);
-        if (ok && !enabledXIndices.contains(graphVarIndex)) {
+        if (ok && !enabledYIndices.contains(graphVarIndex)) {
             graphsToRemove.append(graph);
         }
     }
@@ -1287,16 +1780,16 @@ void MainWindow::rebuildPlotFromSettings(int plot_tab_index)
     }
 
     // Создаем или обновляем графики для всех установленных галочек
-    for (int xIndex : enabledXIndices) {
-        QCPGraph* graph = findGraphForVariable(plotTab.plot, xIndex);
+    for (int yIndex : enabledYIndices) {
+        QCPGraph* graph = findGraphForVariable(plotTab.plot, yIndex);
         
         if (!graph) {
             // Создаем новый график
             graph = plotTab.plot->addGraph();
-            graph->setName(QString::number(xIndex)); // Сохраняем индекс переменной X в имени графика
+            graph->setName(QString::number(yIndex)); // Сохраняем индекс переменной Y в имени графика
         }
         
-        // Строим или обновляем график
+        // Строим или обновляем график: X из ComboBox, Y из галочки
         draw_single_graph(xIndex, yIndex, plot_tab_index, graph);
     }
 
@@ -1441,9 +1934,9 @@ void MainWindow::draw_single_graph(int first_in, int second_in, int plot_tab_ind
     graph->setAdaptiveSampling(false);
 
     // Применяем настройки из PlotSettingsWidget, если они есть
-    // Используем настройки из строки, соответствующей переменной для оси X
-    if (plot.settingsTable && plot.settingsTable->rowCount() > first_in) {
-        applyPlotSettingsFromTable(graph, plot.settingsTable, first_in);
+    // Используем настройки из строки, соответствующей переменной для оси Y
+    if (plot.settingsTable && plot.settingsTable->rowCount() > second_in) {
+        applyPlotSettingsFromTable(graph, plot.settingsTable, second_in);
     } else {
         // Устанавливаем стиль линии по умолчанию
         graph->setLineStyle(QCPGraph::lsLine);
@@ -1482,6 +1975,564 @@ void MainWindow::draw_single_graph(int first_in, int second_in, int plot_tab_ind
     // Обновляем оси и перерисовываем
     plot.plot->rescaleAxes();
     plot.plot->replot();
+}
+
+QCPBars* MainWindow::findBarsForVariable(QCustomPlot* plot, int variableIndex)
+{
+    if (!plot) {
+        return nullptr;
+    }
+    
+    // Ищем гистограмму с именем, соответствующим индексу переменной Y
+    for (int i = 0; i < plot->plottableCount(); ++i) {
+        QCPAbstractPlottable* plottable = plot->plottable(i);
+        QCPBars* bars = qobject_cast<QCPBars*>(plottable);
+        if (bars) {
+            QString barsName = bars->name();
+            bool ok;
+            int barsVarIndex = barsName.toInt(&ok);
+            if (ok && barsVarIndex == variableIndex) {
+                return bars;
+            }
+        }
+    }
+    
+    return nullptr;
+}
+
+void MainWindow::draw_single_histogram(int xIndex, int yIndex, int plot_tab_index, QCPBars* bars)
+{
+    if (!bars) {
+        return;
+    }
+    
+    if (m_plotTabs.empty()) {
+        return;
+    }
+
+    if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
+        return;
+    }
+
+    PlotTab& plot = m_plotTabs[plot_tab_index];
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+
+    if (experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    if (xIndex < 0 || yIndex < 0 ||
+        xIndex >= static_cast<int>(experiment->get_variables_count()) ||
+        yIndex >= static_cast<int>(experiment->get_variables_count())) {
+        return;
+    }
+
+    Variable& variable_x = experiment->get_variable(xIndex);
+    Variable& variable_y = experiment->get_variable(yIndex);
+
+    // Получаем измерения из переменной X (для оси X гистограммы)
+    const std::vector<double>& xMeasurements = variable_x.get_measurements();
+    const std::vector<double>& yMeasurements = variable_y.get_measurements();
+
+    if (xMeasurements.empty() || yMeasurements.empty()) {
+        return;
+    }
+
+    // Определяем минимальную длину
+    size_t minSize = std::min(xMeasurements.size(), yMeasurements.size());
+
+    // Создаем гистограмму: используем значения X как ключи (позиции столбцов), 
+    // а значения Y как высоты столбцов (значения по оси Y)
+    QVector<double> keys;
+    QVector<double> values;
+    
+    for (size_t i = 0; i < minSize; ++i) {
+        keys.append(xMeasurements[i]);
+        values.append(yMeasurements[i]);
+    }
+
+    // Устанавливаем данные
+    bars->setData(keys, values);
+
+    // Применяем настройки из HistogramSettingsWidget
+    HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(plot.settingsTab);
+    if (histogramSettings && plot.settingsTable && plot.settingsTable->rowCount() > yIndex) {
+        // Цвет и прозрачность
+        QTableWidgetItem* colorItem = plot.settingsTable->item(yIndex, HistogramSettingsWidget::ColumnColor);
+        QTableWidgetItem* opacityItem = plot.settingsTable->item(yIndex, HistogramSettingsWidget::ColumnOpacity);
+        
+        QColor color;
+        if (colorItem) {
+            QString colorString = colorItem->text();
+            color = QColor(colorString);
+        }
+        
+        // Применяем прозрачность (если указана)
+        int opacity = 100; // По умолчанию 100% (непрозрачно)
+        if (opacityItem) {
+            QString opacityStr = opacityItem->text();
+            opacityStr = opacityStr.replace(" %", "").trimmed();
+            bool ok;
+            int opacityValue = opacityStr.toInt(&ok);
+            if (ok && opacityValue >= 0 && opacityValue <= 100) {
+                opacity = opacityValue;
+            }
+        }
+        
+        // Устанавливаем alpha-канал на основе прозрачности (0-100% -> 0-255)
+        int alpha = (opacity * 255) / 100;
+        
+        if (color.isValid()) {
+            color.setAlpha(alpha);
+            bars->setBrush(color);
+            
+            // Для пера также применяем прозрачность
+            QColor penColor = color.darker(150);
+            penColor.setAlpha(alpha);
+            bars->setPen(QPen(penColor));
+        } else {
+            // Если цвет не указан, используем цвет по умолчанию с прозрачностью
+            QColor defaultColor(70, 130, 180, alpha);
+            bars->setBrush(defaultColor);
+            QColor penColor = defaultColor.darker(150);
+            penColor.setAlpha(alpha);
+            bars->setPen(QPen(penColor));
+        }
+        
+        // Ширина столбца
+        QTableWidgetItem* widthItem = plot.settingsTable->item(yIndex, HistogramSettingsWidget::ColumnInterval);
+        if (widthItem) {
+            QString widthStr = widthItem->text().trimmed();
+            if (widthStr.isEmpty() || widthStr == "Автоматически" || widthStr == "auto") {
+                // Автоматический расчет ширины на основе данных
+                if (keys.size() > 1) {
+                    double minKey = *std::min_element(keys.begin(), keys.end());
+                    double maxKey = *std::max_element(keys.begin(), keys.end());
+                    double range = maxKey - minKey;
+                    if (range > 0) {
+                        // Вычисляем среднее расстояние между точками
+                        double avgSpacing = range / (keys.size() - 1);
+                        double width = avgSpacing * 0.8; // 80% от среднего расстояния
+                        bars->setWidth(width);
+                    }
+                } else if (keys.size() == 1) {
+                    // Если только одна точка, используем небольшую ширину по умолчанию
+                    bars->setWidth(1.0);
+                }
+            } else {
+                bool ok;
+                double width = widthStr.toDouble(&ok);
+                if (ok && width > 0) {
+                    bars->setWidth(width);
+                } else {
+                    // Если значение некорректное, используем автоматический расчет
+                    if (keys.size() > 1) {
+                        double minKey = *std::min_element(keys.begin(), keys.end());
+                        double maxKey = *std::max_element(keys.begin(), keys.end());
+                        double range = maxKey - minKey;
+                        if (range > 0) {
+                            double avgSpacing = range / (keys.size() - 1);
+                            double width = avgSpacing * 0.8;
+                            bars->setWidth(width);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Настройки по умолчанию (100% непрозрачность)
+        bars->setBrush(QColor(70, 130, 180, 255));
+        bars->setPen(QPen(QColor(70, 130, 180).darker(150)));
+        if (keys.size() > 1) {
+            double minKey = *std::min_element(keys.begin(), keys.end());
+            double maxKey = *std::max_element(keys.begin(), keys.end());
+            double range = maxKey - minKey;
+            double width = range / keys.size() * 0.8;
+            bars->setWidth(width);
+        }
+    }
+
+    // Настраиваем оси
+    if (histogramSettings) {
+        QString xLabel = histogramSettings->xAxisLabelEdit()->text();
+        QString yLabel = histogramSettings->yAxisLabelEdit()->text();
+        
+        if (xLabel.isEmpty()) {
+            xLabel = QString::fromStdString(variable_x.get_name_tables());
+            xLabel.remove('\"');
+            histogramSettings->xAxisLabelEdit()->setText(xLabel);
+        }
+        if (yLabel.isEmpty()) {
+            yLabel = "Частота";
+            histogramSettings->yAxisLabelEdit()->setText(yLabel);
+        }
+        
+        plot.plot->xAxis->setLabel(xLabel);
+        plot.plot->yAxis->setLabel(yLabel);
+    } else {
+        plot.plot->xAxis->setLabel(QString::fromStdString(variable_x.get_name_tables()));
+        plot.plot->yAxis->setLabel("Частота");
+    }
+
+    // Обновляем оси и перерисовываем
+    plot.plot->rescaleAxes();
+    plot.plot->replot();
+}
+
+void MainWindow::rebuildHistogramFromSettings(int plot_tab_index)
+{
+    if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
+        return;
+    }
+
+    PlotTab& plotTab = m_plotTabs[plot_tab_index];
+    HistogramSettingsWidget* histogramSettings = qobject_cast<HistogramSettingsWidget*>(plotTab.settingsTab);
+    if (!histogramSettings) {
+        return;
+    }
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment || experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    // Получаем переменную для оси X из ComboBox
+    QComboBox* xAxisCombo = histogramSettings->xAxisComboBox();
+    if (!xAxisCombo || xAxisCombo->count() == 0) {
+        return;
+    }
+    int xIndex = xAxisCombo->currentData().toInt();
+
+    if (xIndex < 0 || xIndex >= static_cast<int>(experiment->get_variables_count())) {
+        return;
+    }
+
+    QTableWidget* settingsTable = histogramSettings->settingsTable();
+    
+    // Собираем список переменных Y с установленными галочками
+    QList<int> enabledYIndices;
+    for (int i = 0; i < settingsTable->rowCount(); ++i) {
+        QTableWidgetItem* enabledItem = settingsTable->item(i, HistogramSettingsWidget::ColumnEnabled);
+        if (enabledItem && enabledItem->checkState() == Qt::Checked) {
+            if (i < static_cast<int>(experiment->get_variables_count())) {
+                enabledYIndices.append(i);
+            }
+        }
+    }
+
+    // Удаляем гистограммы, для которых галочка снята
+    QList<QCPBars*> barsToRemove;
+    for (int i = 0; i < plotTab.plot->plottableCount(); ++i) {
+        QCPAbstractPlottable* plottable = plotTab.plot->plottable(i);
+        QCPBars* bars = qobject_cast<QCPBars*>(plottable);
+        if (bars) {
+            QString barsName = bars->name();
+            bool ok;
+            int barsVarIndex = barsName.toInt(&ok);
+            if (ok && !enabledYIndices.contains(barsVarIndex)) {
+                barsToRemove.append(bars);
+            }
+        }
+    }
+    
+    for (QCPBars* bars : barsToRemove) {
+        plotTab.plot->removePlottable(bars);
+    }
+
+    // Создаем или обновляем гистограммы для всех установленных галочек
+    for (int yIndex : enabledYIndices) {
+        QCPBars* bars = findBarsForVariable(plotTab.plot, yIndex);
+        
+        if (!bars) {
+            // Создаем новую гистограмму
+            // QCPBars автоматически регистрируется в QCustomPlot при создании с указанием осей
+            bars = new QCPBars(plotTab.plot->xAxis, plotTab.plot->yAxis);
+            bars->setName(QString::number(yIndex)); // Сохраняем индекс переменной Y в имени
+            // QCPBars автоматически добавляется в plot через конструктор QCPAbstractPlottable
+            // Не нужно вызывать addPlottable - это делается автоматически
+        }
+        
+        // Строим или обновляем гистограмму: X из ComboBox, Y из галочки
+        draw_single_histogram(xIndex, yIndex, plot_tab_index, bars);
+    }
+
+    // Обновляем оси и перерисовываем
+    if (plotTab.plot->plottableCount() > 0) {
+        // Настраиваем названия осей из QLineEdit
+        if (histogramSettings) {
+            QString xLabel = histogramSettings->xAxisLabelEdit()->text();
+            QString yLabel = histogramSettings->yAxisLabelEdit()->text();
+            
+            if (!xLabel.isEmpty()) {
+                plotTab.plot->xAxis->setLabel(xLabel);
+            }
+            if (!yLabel.isEmpty()) {
+                plotTab.plot->yAxis->setLabel(yLabel);
+            }
+        }
+        plotTab.plot->rescaleAxes();
+    }
+    plotTab.plot->replot();
+}
+
+void MainWindow::draw_single_scatter(int xIndex, int yIndex, int plot_tab_index, QCPGraph* graph)
+{
+    if (!graph) {
+        return;
+    }
+    
+    if (m_plotTabs.empty()) {
+        return;
+    }
+
+    if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
+        return;
+    }
+
+    PlotTab& plot = m_plotTabs[plot_tab_index];
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment) {
+        return;
+    }
+
+    if (experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    if (xIndex < 0 || yIndex < 0 ||
+        xIndex >= static_cast<int>(experiment->get_variables_count()) ||
+        yIndex >= static_cast<int>(experiment->get_variables_count())) {
+        return;
+    }
+
+    Variable& variable_x = experiment->get_variable(xIndex);
+    Variable& variable_y = experiment->get_variable(yIndex);
+
+    // Получаем измерения
+    const std::vector<double>& xMeasurements = variable_x.get_measurements();
+    const std::vector<double>& yMeasurements = variable_y.get_measurements();
+
+    if (xMeasurements.empty() || yMeasurements.empty()) {
+        return;
+    }
+
+    // Определяем минимальную длину
+    size_t minSize = std::min(xMeasurements.size(), yMeasurements.size());
+
+    // Создаем данные для scatter plot
+    QVector<double> xData, yData;
+    
+    for (size_t i = 0; i < minSize; ++i) {
+        xData.append(xMeasurements[i]);
+        yData.append(yMeasurements[i]);
+    }
+
+    // Устанавливаем данные
+    graph->setData(xData, yData);
+    
+    // Настраиваем scatter plot - только точки, без линий
+    graph->setLineStyle(QCPGraph::lsNone);
+    graph->setScatterStyle(QCPScatterStyle::ssCircle);
+
+    // Применяем настройки из ScatterSettingsWidget
+    ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(plot.settingsTab);
+    if (scatterSettings && plot.settingsTable && plot.settingsTable->rowCount() > yIndex) {
+        // Размер точки
+        QTableWidgetItem* pointSizeItem = plot.settingsTable->item(yIndex, ScatterSettingsWidget::ColumnPointSize);
+        if (pointSizeItem) {
+            bool ok;
+            double size = pointSizeItem->text().toDouble(&ok);
+            if (ok && size > 0) {
+                QCPScatterStyle scatterStyle = graph->scatterStyle();
+                scatterStyle.setSize(size);
+                graph->setScatterStyle(scatterStyle);
+            }
+        }
+        
+        // Тип точки
+        QTableWidgetItem* pointTypeItem = plot.settingsTable->item(yIndex, ScatterSettingsWidget::ColumnPointType);
+        if (pointTypeItem) {
+            QString pointType = pointTypeItem->text();
+            QCPScatterStyle scatterStyle = graph->scatterStyle();
+            
+            if (pointType == "Круг" || pointType == "circle") {
+                scatterStyle.setShape(QCPScatterStyle::ssCircle);
+            } else if (pointType == "Квадрат" || pointType == "square") {
+                scatterStyle.setShape(QCPScatterStyle::ssSquare);
+            } else if (pointType == "Крестик" || pointType == "cross") {
+                scatterStyle.setShape(QCPScatterStyle::ssCross);
+            } else if (pointType == "Плюс" || pointType == "plus") {
+                scatterStyle.setShape(QCPScatterStyle::ssPlus);
+            } else if (pointType == "Ромб" || pointType == "diamond") {
+                scatterStyle.setShape(QCPScatterStyle::ssDiamond);
+            }
+            
+            graph->setScatterStyle(scatterStyle);
+        }
+        
+        // Цвет
+        QTableWidgetItem* colorItem = plot.settingsTable->item(yIndex, ScatterSettingsWidget::ColumnColor);
+        if (colorItem) {
+            QString colorString = colorItem->text();
+            QColor color(colorString);
+            if (color.isValid()) {
+                QPen pen = graph->pen();
+                pen.setColor(color);
+                graph->setPen(pen);
+                
+                QCPScatterStyle scatterStyle = graph->scatterStyle();
+                scatterStyle.setPen(QPen(color));
+                scatterStyle.setBrush(QBrush(color));
+                graph->setScatterStyle(scatterStyle);
+            }
+        }
+    } else {
+        // Настройки по умолчанию
+        QPen pen(QColor(70, 130, 180));
+        graph->setPen(pen);
+        QCPScatterStyle scatterStyle(QCPScatterStyle::ssCircle, QColor(70, 130, 180), QColor(70, 130, 180), 6);
+        graph->setScatterStyle(scatterStyle);
+    }
+
+    // Настраиваем оси
+    if (scatterSettings) {
+        QString xLabel = scatterSettings->xAxisLabelEdit()->text();
+        QString yLabel = scatterSettings->yAxisLabelEdit()->text();
+        
+        if (xLabel.isEmpty()) {
+            xLabel = QString::fromStdString(variable_x.get_name_tables());
+            xLabel.remove('\"');
+            scatterSettings->xAxisLabelEdit()->setText(xLabel);
+        }
+        if (yLabel.isEmpty()) {
+            yLabel = QString::fromStdString(variable_y.get_name_tables());
+            yLabel.remove('\"');
+            scatterSettings->yAxisLabelEdit()->setText(yLabel);
+        }
+        
+        plot.plot->xAxis->setLabel(xLabel);
+        plot.plot->yAxis->setLabel(yLabel);
+    } else {
+        plot.plot->xAxis->setLabel(QString::fromStdString(variable_x.get_name_tables()));
+        plot.plot->yAxis->setLabel(QString::fromStdString(variable_y.get_name_tables()));
+    }
+
+    // Обновляем оси и перерисовываем
+    plot.plot->rescaleAxes();
+    plot.plot->replot();
+}
+
+void MainWindow::rebuildScatterFromSettings(int plot_tab_index)
+{
+    if (plot_tab_index < 0 || plot_tab_index >= m_plotTabs.size()) {
+        return;
+    }
+
+    PlotTab& plotTab = m_plotTabs[plot_tab_index];
+    ScatterSettingsWidget* scatterSettings = qobject_cast<ScatterSettingsWidget*>(plotTab.settingsTab);
+    if (!scatterSettings) {
+        return;
+    }
+
+    Experiment* experiment = Experiment::get_instance();
+    if (!experiment || experiment->get_variables_count() == 0) {
+        return;
+    }
+
+    // Получаем переменную для оси X из ComboBox
+    QComboBox* xAxisCombo = scatterSettings->xAxisComboBox();
+    if (!xAxisCombo || xAxisCombo->count() == 0) {
+        return;
+    }
+    int xIndex = xAxisCombo->currentData().toInt();
+
+    if (xIndex < 0 || xIndex >= static_cast<int>(experiment->get_variables_count())) {
+        return;
+    }
+
+    QTableWidget* settingsTable = scatterSettings->settingsTable();
+    
+    // Собираем список переменных Y с установленными галочками
+    QList<int> enabledYIndices;
+    for (int i = 0; i < settingsTable->rowCount(); ++i) {
+        QTableWidgetItem* enabledItem = settingsTable->item(i, ScatterSettingsWidget::ColumnEnabled);
+        if (enabledItem && enabledItem->checkState() == Qt::Checked) {
+            if (i < static_cast<int>(experiment->get_variables_count())) {
+                enabledYIndices.append(i);
+            }
+        }
+    }
+
+    // Удаляем scatter plots, для которых галочка снята
+    QList<QCPGraph*> graphsToRemove;
+    for (int i = 0; i < plotTab.plot->graphCount(); ++i) {
+        QCPGraph* graph = plotTab.plot->graph(i);
+        QString graphName = graph->name();
+        bool ok;
+        int graphVarIndex = graphName.toInt(&ok);
+        if (ok && !enabledYIndices.contains(graphVarIndex)) {
+            graphsToRemove.append(graph);
+        }
+    }
+    
+    for (QCPGraph* graph : graphsToRemove) {
+        plotTab.plot->removeGraph(graph);
+    }
+
+    // Создаем или обновляем scatter plots для всех установленных галочек
+    for (int yIndex : enabledYIndices) {
+        QCPGraph* graph = findGraphForVariable(plotTab.plot, yIndex);
+        
+        if (!graph) {
+            // Создаем новый scatter plot
+            graph = plotTab.plot->addGraph();
+            graph->setName(QString::number(yIndex)); // Сохраняем индекс переменной Y в имени
+        }
+        
+        // Строим или обновляем scatter plot: X из ComboBox, Y из галочки
+        draw_single_scatter(xIndex, yIndex, plot_tab_index, graph);
+    }
+
+    // Обновляем оси и перерисовываем
+    if (plotTab.plot->graphCount() > 0) {
+        // Настраиваем названия осей из QLineEdit
+        if (scatterSettings) {
+            QString xLabel = scatterSettings->xAxisLabelEdit()->text();
+            QString yLabel = scatterSettings->yAxisLabelEdit()->text();
+            
+            if (!xLabel.isEmpty()) {
+                plotTab.plot->xAxis->setLabel(xLabel);
+            }
+            if (!yLabel.isEmpty()) {
+                plotTab.plot->yAxis->setLabel(yLabel);
+            }
+        }
+        plotTab.plot->rescaleAxes();
+    }
+    plotTab.plot->replot();
+}
+
+void MainWindow::onTableDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
+{
+    Q_UNUSED(topLeft);
+    Q_UNUSED(bottomRight);
+    Q_UNUSED(roles);
+    
+    // Обновляем все графики при изменении данных в таблице
+    for (int i = 0; i < m_plotTabs.size(); ++i) {
+        if (m_plotTabs[i].type == "График") {
+            rebuildPlotFromSettings(i);
+        } else if (m_plotTabs[i].type == "Гистограмма") {
+            rebuildHistogramFromSettings(i);
+        } else if (m_plotTabs[i].type == "Скаттерплот") {
+            rebuildScatterFromSettings(i);
+        }
+    }
 }
 
 void MainWindow::on_export_data_triggered()

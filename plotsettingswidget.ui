@@ -14,19 +14,19 @@
    <item>
     <layout class="QFormLayout" name="formLayout">
      <item row="0" column="0">
-      <widget class="QLabel" name="label_yAxis">
+      <widget class="QLabel" name="label_xAxis">
        <property name="font">
         <font>
          <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>Переменная Y:</string>
+        <string>Переменная X:</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QComboBox" name="comboBox_yAxis">
+      <widget class="QComboBox" name="comboBox_xAxis">
        <property name="maximumSize">
         <size>
          <width>300</width>
@@ -114,7 +114,7 @@
      </column>
      <column>
       <property name="text">
-       <string>Ширина</string>
+       <string>Ширина линии</string>
       </property>
       <property name="font">
        <font>

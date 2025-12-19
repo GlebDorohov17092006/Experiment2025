@@ -2,10 +2,13 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <map>
+#include <memory>
 #include "json.hpp"
 #include <qDebug>
 #include "parser.h"
 #include "Experiment.h"
+#include "Instrument.h"
 #include "AbsoluteInstrument.h"
 #include "RelativeInstrument.h"
 using json = nlohmann::json;
@@ -95,7 +98,7 @@ std::vector<Variable> parser_csv(const std::string& filename)
     return variables;
 }
 
-void parser_json(std::vector<Variable> &variables, const std::string& filename)
+void parser_json(std::vector<Variable> &variables, const std::string& filename, std::vector<std::shared_ptr<Instrument>>* instruments, std::shared_ptr<Instrument> noInstrument)
 {
     //Reading json file
     std::string full_path = filename;
@@ -103,11 +106,27 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
 
     // If not found, try relative path from build directory
     if (!json_file.is_open()) {
+        // Если файл не открыт, устанавливаем базовый инструмент для всех переменных
+        if (noInstrument) {
+            for(Variable& curr_variable : variables) {
+                if (curr_variable.get_instrument() == nullptr) {
+                    curr_variable.add_instrument(noInstrument.get());
+                }
+            }
+        }
         return;
     }
 
     if (!json_file.is_open()) {
         std::cerr << "Open fault " << filename << std::endl;
+        // Если файл не открыт, устанавливаем базовый инструмент для всех переменных
+        if (noInstrument) {
+            for(Variable& curr_variable : variables) {
+                if (curr_variable.get_instrument() == nullptr) {
+                    curr_variable.add_instrument(noInstrument.get());
+                }
+            }
+        }
         return;
     }
 
@@ -117,8 +136,19 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
     } catch (const json::parse_error& e) {
         std::cerr << "JSON parse error: " << e.what() << std::endl;
         json_file.close();
+        // При ошибке парсинга устанавливаем базовый инструмент для всех переменных
+        if (noInstrument) {
+            for(Variable& curr_variable : variables) {
+                if (curr_variable.get_instrument() == nullptr) {
+                    curr_variable.add_instrument(noInstrument.get());
+                }
+            }
+        }
         return;
     }
+
+    // Map для хранения уникальных инструментов по имени
+    std::map<std::string, std::shared_ptr<Instrument>> instruments_map;
 
     //For each column of table setting name of instrument and error
     for(Variable& curr_variable : variables)
@@ -128,6 +158,10 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
             
             // Проверяем, существует ли переменная в JSON
             if (!instruments_data["Variables"].contains(variable_name)) {
+                // Если переменной нет в JSON, устанавливаем базовый инструмент
+                if (noInstrument && curr_variable.get_instrument() == nullptr) {
+                    curr_variable.add_instrument(noInstrument.get());
+                }
                 continue;
             }
             
@@ -135,36 +169,68 @@ void parser_json(std::vector<Variable> &variables, const std::string& filename)
             
             // Проверяем, существует ли инструмент в JSON
             if (!instruments_data["Instruments"].contains(name_instrument)) {
+                // Если инструмента нет в JSON, устанавливаем базовый инструмент
+                if (noInstrument && curr_variable.get_instrument() == nullptr) {
+                    curr_variable.add_instrument(noInstrument.get());
+                }
                 continue;
             }
             
             std::string type_of_error = instruments_data["Instruments"][name_instrument]["type"].get<std::string>();
             double value_of_error = instruments_data["Instruments"][name_instrument]["error"].get<double>();
 
-            //Creating instrument on heap and adding it to each variable
-            if(type_of_error == "Absolute")
-            {
-                AbsoluteInstrument* instrument = new AbsoluteInstrument(name_instrument, value_of_error);
-                curr_variable.add_instrument(instrument);
+            // Проверяем, есть ли уже такой инструмент в map
+            std::shared_ptr<Instrument> instrument;
+            if (instruments_map.find(name_instrument) != instruments_map.end()) {
+                // Используем существующий инструмент
+                instrument = instruments_map[name_instrument];
+            } else {
+                // Создаем новый инструмент
+                if(type_of_error == "Absolute")
+                {
+                    instrument = std::make_shared<AbsoluteInstrument>(name_instrument, value_of_error);
+                }
+                else if(type_of_error == "Relative")
+                {
+                    instrument = std::make_shared<RelativeInstrument>(name_instrument, value_of_error);
+                }
+                
+                // Добавляем в map
+                if (instrument) {
+                    instruments_map[name_instrument] = instrument;
+                }
             }
-            else if(type_of_error == "Relative")
-            {
-                RelativeInstrument* instrument = new RelativeInstrument(name_instrument, value_of_error);
-                curr_variable.add_instrument(instrument);
+
+            // Добавляем инструмент к переменной
+            if (instrument) {
+                curr_variable.add_instrument(instrument.get());
             }
         } catch (const std::exception& e) {
             std::cerr << "Error processing variable: " << e.what() << std::endl;
+            // При ошибке устанавливаем базовый инструмент
+            if (noInstrument && curr_variable.get_instrument() == nullptr) {
+                curr_variable.add_instrument(noInstrument.get());
+            }
             continue;
+        }
+    }
+
+    // Если передан указатель на вектор инструментов, заполняем его
+    if (instruments != nullptr) {
+        instruments->clear();
+        // Базовый инструмент будет добавлен в MainWindow, здесь добавляем только инструменты из JSON
+        for (const auto& pair : instruments_map) {
+            instruments->push_back(pair.second);
         }
     }
 
     json_file.close();
 }
 
-std::vector<Variable> parser(const std::string& filename_csv, const std::string& filename_json)
+std::vector<Variable> parser(const std::string& filename_csv, const std::string& filename_json, std::vector<std::shared_ptr<Instrument>>* instruments, std::shared_ptr<Instrument> noInstrument)
 {
     std::vector<Variable> variables =  parser_csv(filename_csv);
-    parser_json(variables, filename_json);
+    parser_json(variables, filename_json, instruments, noInstrument);
 
     return variables;
 
